@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 class TreinarPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFF8FAFC), Color(0xFFE0E7FF)],
+          colors: isDark 
+            ? [const Color(0xFF111827), const Color(0xFF1F2937)]
+            : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -42,7 +46,7 @@ class TreinarPage extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -107,7 +111,7 @@ class TreinarPage extends StatelessWidget {
                       child: Text(
                         'Criar Treino',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: const Color(0xFF3B82F6),
+                          color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -121,15 +125,17 @@ class TreinarPage extends StatelessWidget {
             // Banner Treinos Prontos
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                gradient: LinearGradient(
+                  colors: isDark 
+                    ? [const Color(0xFF6366F1), const Color(0xFF8B5CF6)]
+                    : [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF3B82F6).withOpacity(0.3),
+                    color: (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -194,7 +200,7 @@ class TreinarPage extends StatelessWidget {
                       child: Text(
                         'Treinos Prontos',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: const Color(0xFF3B82F6),
+                          color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

@@ -84,17 +84,25 @@ class _CadastroPageState extends State<CadastroPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF111827), // Preto
-              Color(0xFF1E3A8A), // Azul escuro
-              Color(0xFF3B82F6), // Azul médio
-            ],
+            colors: isDark 
+              ? [
+                  const Color(0xFF111827), // Preto
+                  const Color(0xFF1F2937), // Cinza escuro
+                  const Color(0xFF6366F1), // Índigo
+                ]
+              : [
+                  const Color(0xFF111827), // Preto
+                  const Color(0xFF1E3A8A), // Azul escuro
+                  const Color(0xFF3B82F6), // Azul médio
+                ],
           ),
         ),
         child: SafeArea(
@@ -142,11 +150,11 @@ class _CadastroPageState extends State<CadastroPage> {
                   Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1F2937) : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -160,7 +168,7 @@ class _CadastroPageState extends State<CadastroPage> {
                           Text(
                             'Cadastro',
                             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              color: const Color(0xFF111827),
+                              color: isDark ? Colors.white : const Color(0xFF111827),
                               fontWeight: FontWeight.w700,
                             ),
                             textAlign: TextAlign.center,

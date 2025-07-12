@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -15,7 +17,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-  bool _darkTheme = false;
   int? usuarioId;
   bool _isLoading = true;
   List<Widget> _pages = [];
@@ -64,21 +65,26 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
         body: Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF6366F1),
+            color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
           ),
         ),
       );
     }
+    
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
-        darkTheme: _darkTheme,
-        onThemeChanged: (val) => setState(() => _darkTheme = val),
+        darkTheme: isDark,
+        onThemeChanged: (val) => themeProvider.setTheme(val),
         onMenuTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -87,13 +93,15 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF374151)),
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : const Color(0xFF374151),
+        ),
         title: Text(
           'UPMAX Fitness',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: const Color(0xFF374151),
+            color: isDark ? Colors.white : const Color(0xFF374151),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -101,37 +109,39 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: Icon(
-              _darkTheme ? Icons.nightlight_round : Icons.nightlight_outlined,
-              color: const Color(0xFF374151),
+              isDark ? Icons.nightlight_round : Icons.nightlight_outlined,
+              color: isDark ? Colors.white : const Color(0xFF374151),
             ),
-            onPressed: () => setState(() => _darkTheme = !_darkTheme),
+            onPressed: () => themeProvider.toggleTheme(),
           ),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF8FAFC), Color(0xFFE0E7FF)],
+            colors: isDark 
+              ? [const Color(0xFF020617), const Color(0xFF0F172A)] // Azuis muito escuros
+              : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-        child: _pages.isNotEmpty ? _pages[_selectedIndex] : const Center(
+        child: _pages.isNotEmpty ? _pages[_selectedIndex] : Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF3B82F6),
+            color: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
           ),
         ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF0F172A) : Colors.white, // Azul muito escuro
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -144,11 +154,11 @@ class _HomePageState extends State<HomePage> {
               topRight: Radius.circular(24),
             ),
             child: BottomNavigationBar(
-              backgroundColor: Colors.white,
+              backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white, // Azul muito escuro
               elevation: 0,
               type: BottomNavigationBarType.fixed,
-              selectedItemColor: const Color(0xFF3B82F6),
-              unselectedItemColor: const Color(0xFF9CA3AF),
+              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6), // Azul médio
+              unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF), // Azul mais claro
               selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -162,11 +172,11 @@ class _HomePageState extends State<HomePage> {
               showUnselectedLabels: true,
               iconSize: 24,
               items: [
-                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex),
-                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex),
-                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex),
-                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex),
-                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex),
+                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, isDark),
+                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, isDark),
+                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, isDark),
+                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, isDark),
+                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, isDark),
               ],
               currentIndex: _selectedIndex,
               onTap: (index) {
@@ -181,7 +191,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  static BottomNavigationBarItem _navBarItem(IconData icon, String label, int index, int selectedIndex) {
+  BottomNavigationBarItem _navBarItem(IconData icon, String label, int index, int selectedIndex, bool isDark) {
     final bool isSelected = index == selectedIndex;
     return BottomNavigationBarItem(
       icon: AnimatedContainer(
@@ -189,13 +199,17 @@ class _HomePageState extends State<HomePage> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.transparent,
+          color: isSelected 
+            ? (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withOpacity(0.1) 
+            : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           icon,
           size: 24,
-          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF9CA3AF),
+          color: isSelected 
+            ? (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6))
+            : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
         ),
       ),
       label: label,
@@ -224,10 +238,10 @@ class CustomDrawer extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.only(top: 48, bottom: 24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: darkTheme ? const Color(0xFF1F2937) : Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withOpacity(darkTheme ? 0.3 : 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -259,10 +273,10 @@ class CustomDrawer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Maalon Barbosa Silva Santos',
                   style: TextStyle(
-                    color: Color(0xFF374151),
+                    color: darkTheme ? Colors.white : const Color(0xFF374151),
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
                     fontFamily: 'Poppins',
@@ -310,16 +324,21 @@ class CustomDrawer extends StatelessWidget {
                 _drawerItem(Icons.account_balance_wallet_outlined, 'Meu Saldo', () {}),
                 _drawerItem(Icons.credit_card_outlined, 'Assinatura', () {}),
                 SwitchListTile(
-                  title: const Text(
+                  title: Text(
                     'Tema Escuro',
                     style: TextStyle(
                       fontSize: 15,
                       fontFamily: 'Poppins',
+                      color: darkTheme ? Colors.white : const Color(0xFF374151),
                     ),
                   ),
                   value: darkTheme,
                   onChanged: onThemeChanged,
-                  secondary: const Icon(Icons.nightlight_round_outlined),
+                  secondary: Icon(
+                    Icons.nightlight_round_outlined,
+                    color: darkTheme ? Colors.white : const Color(0xFF3B82F6),
+                  ),
+                  activeColor: const Color(0xFF6366F1),
                 ),
                 _drawerItem(Icons.logout, 'Sair', () async {
                   final prefs = await SharedPreferences.getInstance();
@@ -364,12 +383,16 @@ class CustomDrawer extends StatelessWidget {
 
   Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF3B82F6)),
+      leading: Icon(
+        icon, 
+        color: darkTheme ? Colors.white : const Color(0xFF3B82F6),
+      ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
           fontFamily: 'Poppins',
+          color: darkTheme ? Colors.white : const Color(0xFF374151),
         ),
       ),
       onTap: onTap,
@@ -380,6 +403,239 @@ class CustomDrawer extends StatelessWidget {
 class _HomeContent extends StatefulWidget {
   @override
   State<_HomeContent> createState() => _HomeContentState();
+
+  static Widget _buildTreinoItem(BuildContext context, String data, String titulo, String tempo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF334155) : Colors.white, // Azul escuro
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF475569) : const Color(0xFFE5E7EB), // Azul mais claro
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Data
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withOpacity(0.1), // Azul médio
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              data,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6), // Azul médio
+                fontSize: 11,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Título e tempo
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF374151),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      tempo,
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _statCard(BuildContext context, String value, String label, IconData icon, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF334155) : Colors.white, // Azul escuro
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
+              fontFamily: 'Poppins',
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildCalendar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Table(
+      border: TableBorder.all(color: Colors.transparent),
+      children: [
+        TableRow(
+          children: [
+            Center(child: Text('Dom', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Seg', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Ter', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Qua', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Qui', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Sex', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+            Center(child: Text('Sáb', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
+          ],
+        ),
+        TableRow(
+          children: [
+            _calendarDay(context, '1'),
+            _calendarDay(context, '2'),
+            _calendarDay(context, '3'),
+            _calendarDay(context, '4'),
+            _calendarDay(context, '5', checked: true),
+            _calendarDay(context, '6', checked: true),
+            _calendarDay(context, '7'),
+          ],
+        ),
+        TableRow(
+          children: [
+            _calendarDay(context, '8', checked: true),
+            _calendarDay(context, '9'),
+            _calendarDay(context, '10', checked: true),
+            _calendarDay(context, '11', selected: true),
+            _calendarDay(context, '12'),
+            _calendarDay(context, '13'),
+            _calendarDay(context, '14'),
+          ],
+        ),
+        TableRow(
+          children: [
+            _calendarDay(context, '15'),
+            _calendarDay(context, '16'),
+            _calendarDay(context, '17'),
+            _calendarDay(context, '18'),
+            _calendarDay(context, '19'),
+            _calendarDay(context, '20'),
+            _calendarDay(context, '21'),
+          ],
+        ),
+        TableRow(
+          children: [
+            _calendarDay(context, '22'),
+            _calendarDay(context, '23'),
+            _calendarDay(context, '24'),
+            _calendarDay(context, '25'),
+            _calendarDay(context, '26'),
+            _calendarDay(context, '27'),
+            _calendarDay(context, '28'),
+          ],
+        ),
+        TableRow(
+          children: [
+            _calendarDay(context, '29'),
+            _calendarDay(context, '30'),
+            _calendarDay(context, '31'),
+            const SizedBox(),
+            const SizedBox(),
+            const SizedBox(),
+            const SizedBox(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static Widget _calendarDay(BuildContext context, String day, {bool checked = false, bool selected = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: selected
+            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
+            : checked
+                ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withOpacity(0.2) // Azul médio
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected
+              ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
+              : checked
+                  ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withOpacity(0.5) // Azul médio
+                  : isDark
+                      ? const Color(0xFF475569) // Azul mais claro
+                      : const Color(0xFFE5E7EB),
+          width: selected ? 2 : 1,
+        ),
+      ),
+      height: 32,
+      child: Center(
+        child: Text(
+          day,
+          style: TextStyle(
+            color: selected
+                ? Colors.white
+                : checked
+                    ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
+                    : isDark
+                        ? Colors.white
+                        : const Color(0xFF374151),
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _HomeContentState extends State<_HomeContent> {
@@ -413,13 +669,19 @@ class _HomeContentState extends State<_HomeContent> {
 
   Future<void> _buscarHistorico(int usuarioId) async {
     try {
+      print('Buscando histórico para usuário ID: $usuarioId');
       final response = await http.get(
         Uri.parse('https://airfit.online/api/api.php?tabela=historico_saldo&acao=historico_usuario&usuario_id=$usuarioId'),
       );
 
+      print('Status da resposta: ${response.statusCode}');
+      print('Corpo da resposta: ${response.body}');
+
       if (response.statusCode == 200) {
         final List dados = jsonDecode(response.body);
         final List<Map<String, dynamic>> historicoOrdenado = List<Map<String, dynamic>>.from(dados);
+        
+        print('Dados recebidos: ${historicoOrdenado.length} registros');
         
         // Ordenar por data mais recente
         historicoOrdenado.sort((a, b) => DateTime.parse(b['data_registro']).compareTo(DateTime.parse(a['data_registro'])));
@@ -437,11 +699,16 @@ class _HomeContentState extends State<_HomeContent> {
           total += double.tryParse(treino['kg_levantados'].toString()) ?? 0;
         }
 
+        print('Treinos no mês atual: $treinosMes');
+        print('Total de kg: $total');
+
         setState(() {
           historico = historicoOrdenado;
           treinosMesAtual = treinosMes;
           totalKg = total;
         });
+      } else {
+        print('Erro na resposta: ${response.statusCode}');
       }
     } catch (e) {
       print('Erro ao buscar histórico: $e');
@@ -451,7 +718,9 @@ class _HomeContentState extends State<_HomeContent> {
   String _formatarData(String dataRegistro) {
     try {
       final data = DateTime.parse(dataRegistro);
-      return '${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}';
+      final diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      final diaSemana = diasSemana[data.weekday - 1];
+      return '$diaSemana, ${data.day.toString().padLeft(2, '0')}/${data.month.toString().padLeft(2, '0')}';
     } catch (e) {
       return '--/--';
     }
@@ -461,9 +730,9 @@ class _HomeContentState extends State<_HomeContent> {
     try {
       final peso = double.parse(kg.toString());
       if (peso >= 1000) {
-        return '{(peso / 1000).toStringAsFixed(1)}t';
+        return '${(peso / 1000).toStringAsFixed(1)}t';
       }
-      return '{peso.toStringAsFixed(0)} kg';
+      return '${peso.toStringAsFixed(0)} kg';
     } catch (e) {
       return '0 kg';
     }
@@ -486,6 +755,8 @@ class _HomeContentState extends State<_HomeContent> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Padding bottom aumentado
       child: Column(
@@ -494,15 +765,17 @@ class _HomeContentState extends State<_HomeContent> {
           // Card principal de treino
           Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+              gradient: LinearGradient(
+                colors: isDark 
+                  ? [const Color(0xFF6366F1), const Color(0xFF8B5CF6)]
+                  : [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3B82F6).withOpacity(0.3),
+                  color: (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withOpacity(0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -567,7 +840,7 @@ class _HomeContentState extends State<_HomeContent> {
                     child: Text(
                       'Iniciar Treino',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: const Color(0xFF3B82F6),
+                        color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -581,11 +854,11 @@ class _HomeContentState extends State<_HomeContent> {
           // Card de histórico
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E293B) : Colors.white, // Azul escuro variante
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -600,12 +873,12 @@ class _HomeContentState extends State<_HomeContent> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6).withOpacity(0.1),
+                        color: (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.bar_chart,
-                        color: Color(0xFF3B82F6),
+                        color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                         size: 20,
                       ),
                     ),
@@ -622,19 +895,19 @@ class _HomeContentState extends State<_HomeContent> {
                 Row(
                   children: [
                     Expanded(
-                      child: _statCard(context, _formatarPeso(totalKg), 'Total levantado', Icons.fitness_center, const Color(0xFF3B82F6)),
+                      child: _HomeContent._statCard(context, _formatarPeso(totalKg), 'Total levantado', Icons.fitness_center, isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _statCard(context, treinosMesAtual.toString(), 'Treinos este mês', Icons.calendar_today, const Color(0xFF60A5FA)),
+                      child: _HomeContent._statCard(context, treinosMesAtual.toString(), 'Treinos este mês', Icons.calendar_today, isDark ? const Color(0xFF8B5CF6) : const Color(0xFF60A5FA)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 if (isLoading)
-                  const Center(
+                  Center(
                     child: CircularProgressIndicator(
-                      color: Color(0xFF3B82F6),
+                      color: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6), // Azul médio
                       strokeWidth: 2,
                     ),
                   )
@@ -642,14 +915,14 @@ class _HomeContentState extends State<_HomeContent> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFF3F4F6), // Azul escuro
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: const Color(0xFF6B7280),
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -657,7 +930,7 @@ class _HomeContentState extends State<_HomeContent> {
                           child: Text(
                             'Nenhum treino registrado ainda',
                             style: TextStyle(
-                              color: const Color(0xFF6B7280),
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
                               fontSize: 14,
                             ),
                           ),
@@ -668,24 +941,9 @@ class _HomeContentState extends State<_HomeContent> {
                 else
                   Column(
                     children: [
-                      if (historico.length >= 1) _buildTreinoItem(
-                        _formatarData(historico[0]['data_registro']),
-                        'Treino',
-                        _formatarPeso(historico[0]['kg_levantados']),
-                        _formatarTempo(historico[0]['tempo_treino_minutos']),
-                      ),
-                      if (historico.length >= 2) _buildTreinoItem(
-                        _formatarData(historico[1]['data_registro']),
-                        'Treino',
-                        _formatarPeso(historico[1]['kg_levantados']),
-                        _formatarTempo(historico[1]['tempo_treino_minutos']),
-                      ),
-                      if (historico.length >= 3) _buildTreinoItem(
-                        _formatarData(historico[2]['data_registro']),
-                        'Treino',
-                        _formatarPeso(historico[2]['kg_levantados']),
-                        _formatarTempo(historico[2]['tempo_treino_minutos']),
-                      ),
+                      if (historico.length >= 1) _HomeContent._buildTreinoItem(context, _formatarData(historico[0]['data_registro']), 'Treino', _formatarTempo(historico[0]['tempo_treino_minutos'])),
+                      if (historico.length >= 2) _HomeContent._buildTreinoItem(context, _formatarData(historico[1]['data_registro']), 'Treino', _formatarTempo(historico[1]['tempo_treino_minutos'])),
+                      if (historico.length >= 3) _HomeContent._buildTreinoItem(context, _formatarData(historico[2]['data_registro']), 'Treino', _formatarTempo(historico[2]['tempo_treino_minutos'])),
                     ],
                   ),
                 const SizedBox(height: 16),
@@ -694,7 +952,7 @@ class _HomeContentState extends State<_HomeContent> {
                   child: Text(
                     'Ver Histórico Completo',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color(0xFF3B82F6),
+                      color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -707,11 +965,11 @@ class _HomeContentState extends State<_HomeContent> {
           // Card de calendário
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E293B) : Colors.white, // Azul escuro variante
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -745,222 +1003,11 @@ class _HomeContentState extends State<_HomeContent> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _buildCalendar(),
+                _HomeContent._buildCalendar(context),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _statCard(BuildContext context, String value, String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: color,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF6B7280),
-              fontFamily: 'Poppins',
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildTreinoItem(String data, String titulo, String peso, String tempo) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              data,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF3B82F6),
-                fontSize: 12,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              titulo,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Text(
-            peso,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            tempo,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildCalendar() {
-    return Table(
-      border: TableBorder.all(color: Colors.transparent),
-      children: [
-        const TableRow(
-          children: [
-            Center(child: Text('Dom', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Seg', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Ter', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Qua', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Qui', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Sex', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-            Center(child: Text('Sáb', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay('1'),
-            _calendarDay('2'),
-            _calendarDay('3'),
-            _calendarDay('4'),
-            _calendarDay('5', checked: true),
-            _calendarDay('6', checked: true),
-            _calendarDay('7'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay('8', checked: true),
-            _calendarDay('9'),
-            _calendarDay('10', checked: true),
-            _calendarDay('11', selected: true),
-            _calendarDay('12'),
-            _calendarDay('13'),
-            _calendarDay('14'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay('15'),
-            _calendarDay('16'),
-            _calendarDay('17'),
-            _calendarDay('18'),
-            _calendarDay('19'),
-            _calendarDay('20'),
-            _calendarDay('21'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay('22'),
-            _calendarDay('23'),
-            _calendarDay('24'),
-            _calendarDay('25'),
-            _calendarDay('26'),
-            _calendarDay('27'),
-            _calendarDay('28'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay('29'),
-            _calendarDay('30'),
-            _calendarDay('31'),
-            Container(),
-            Container(),
-            Container(),
-            Container(),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static Widget _calendarDay(String day, {bool checked = false, bool selected = false}) {
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF3B82F6) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                day,
-                style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF374151),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              if (checked)
-                const Padding(
-                  padding: EdgeInsets.only(left: 2),
-                  child: Icon(
-                    Icons.check_circle,
-                    color: Color(0xFF60A5FA),
-                    size: 12,
-                  ),
-                ),
-              if (selected)
-                const Padding(
-                  padding: EdgeInsets.only(left: 2),
-                  child: Icon(
-                    Icons.star,
-                    color: Color(0xFF60A5FA),
-                    size: 12,
-                  ),
-                ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -78,10 +78,14 @@ class _HistoricoPageState extends State<HistoricoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFF8FAFC), Color(0xFFE0E7FF)],
+          colors: isDark 
+            ? [const Color(0xFF111827), const Color(0xFF1F2937)]
+            : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -96,7 +100,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                 Text(
                   'Histórico de Treinos',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: const Color(0xFF374151),
+                    color: isDark ? Colors.white : const Color(0xFF374151),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -104,7 +108,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                 Text(
                   'Acompanhe seu progresso e evolução',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: const Color(0xFF6B7280),
+                    color: isDark ? const Color(0xFFD1D5DB) : const Color(0xFF6B7280),
                   ),
                 ),
               ],
@@ -114,17 +118,17 @@ class _HistoricoPageState extends State<HistoricoPage> {
           // Conteúdo
           Expanded(
             child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(32),
                   topRight: Radius.circular(32),
                 ),
               ),
               child: loading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF3B82F6),
+                        color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
                       ),
                     )
                   : historico.isEmpty
