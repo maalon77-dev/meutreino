@@ -1,0 +1,13 @@
+build/
+.dart_tool/
+.idea/
+.packages
+pubspec.lock
+*.iml
+*.log
+*.tmp
+*.swp
+*.swo
+*.DS_Store
+*.apk
+*.ipa
