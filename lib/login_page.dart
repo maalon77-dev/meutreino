@@ -48,14 +48,7 @@ class _LoginPageState extends State<LoginPage> {
         if (data['usuario_id'] != null) {
           await prefs.setInt('usuario_id', data['usuario_id']);
           print('Usuario ID salvo: ${data['usuario_id']}');
-        } else {
-          print('ERRO: usuario_id não encontrado na resposta do backend');
-          print('Campos disponíveis na resposta: ${data.keys.toList()}');
         }
-        
-        // Verificar se foi salvo corretamente
-        final idSalvo = prefs.getInt('usuario_id');
-        print('ID verificado após salvar: $idSalvo');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => HomePage()),
