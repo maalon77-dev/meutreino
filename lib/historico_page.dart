@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class HistoricoPage extends StatefulWidget {
-  final int usuarioId; // Passe o ID do usuário logado
-
-  const HistoricoPage({required this.usuarioId, Key? key}) : super(key: key);
+  // Remover o parâmetro usuarioId do construtor
+  const HistoricoPage({Key? key}) : super(key: key);
 
   @override
   State<HistoricoPage> createState() => _HistoricoPageState();
@@ -25,29 +25,30 @@ class _HistoricoPageState extends State<HistoricoPage> {
   @override
   void initState() {
     super.initState();
-    buscarHistorico();
+    _buscarUsuarioIdEHistorico();
   }
 
-  Future<void> buscarHistorico() async {
-    try {
-      print('Buscando histórico para usuário ID: ${widget.usuarioId}');
-      
-      // Se o usuarioId for 0 ou null, mostrar erro
-      if (widget.usuarioId == 0 || widget.usuarioId == null) {
-        setState(() {
-          erro = 'Usuário não identificado. Faça login novamente.';
-          loading = false;
-        });
-        return;
-      }
+  Future<void> _buscarUsuarioIdEHistorico() async {
+    final prefs = await SharedPreferences.getInstance();
+    final usuarioId = prefs.getInt('usuario_id') ?? 0;
+    if (usuarioId == 0) {
+      setState(() {
+        erro = 'Usuário não identificado. Faça login novamente.';
+        loading = false;
+      });
+      return;
+    }
+    await buscarHistoricoComId(usuarioId);
+  }
 
+  Future<void> buscarHistoricoComId(int usuarioId) async {
+    try {
+      print('Buscando histórico para usuário ID: $usuarioId');
       final response = await http.get(
-        Uri.parse('https://airfit.online/api/historico.php?usuario_id=${widget.usuarioId}'),
+        Uri.parse('https://airfit.online/api/api.php?tabela=historico_saldo&acao=historico_usuario&usuario_id=$usuarioId'),
       );
-      
       print('Status da resposta: ${response.statusCode}');
       print('Corpo da resposta: ${response.body}');
-      
       if (response.statusCode == 200) {
         final List dados = jsonDecode(response.body);
         setState(() {
@@ -77,96 +78,203 @@ class _HistoricoPageState extends State<HistoricoPage> {
 
   @override
   Widget build(BuildContext context) {
-    int totalHoras = totalTempo ~/ 60;
-    int totalMin = totalTempo % 60;
-    int numDiasTreino = datasTreino.length;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFE6F0FF),
-      appBar: AppBar(
-        title: const Text('Histórico de Treinos'),
-        backgroundColor: Colors.white,
-        foregroundColor: Color(0xFF1B3358),
-        elevation: 0,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF8FAFC), Color(0xFFE0E7FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : erro != null
-              ? Center(child: Text(erro!))
-              : historico.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.emoji_emotions, size: 60, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          const Text('Nenhum treino realizado ainda'),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () {},
-                            child: const Text('Ver Treinos'),
-                          ),
-                        ],
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Text(
+                  'Histórico de Treinos',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: const Color(0xFF374151),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Acompanhe seu progresso e evolução',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Conteúdo
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
+                ),
+              ),
+              child: loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF3B82F6),
                       ),
                     )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Card de totais
-                          Card(
-                            color: Colors.blue[700],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _statItem(Icons.fitness_center, '${totalKg.toStringAsFixed(1)} kg', 'Peso levantado'),
-                                  _statItem(Icons.access_time, '${totalHoras}h ${totalMin}min', 'Tempo total'),
-                                  _statItem(Icons.directions_run, '${totalKm.toStringAsFixed(1)} km', 'Distância total'),
-                                  _statItem(Icons.calendar_today, '$numDiasTreino', 'Dias de treino'),
+                  : historico.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Icon(
+                                  Icons.history,
+                                  size: 48,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Nenhum treino registrado',
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFF374151),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Complete seu primeiro treino para ver o histórico aqui',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF6B7280),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Padding bottom aumentado
+                          itemCount: historico.length,
+                          itemBuilder: (context, index) {
+                            final item = historico[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
+                                  ),
                                 ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Lista de treinos
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: historico.length,
-                            itemBuilder: (context, i) {
-                              final r = historico[i];
-                              final data = DateTime.parse(r['data_registro']);
-                              final diasSemana = [
-                                'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
-                              ];
-                              final diaSemana = diasSemana[data.weekday % 7];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(vertical: 6),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.blue[100],
-                                    child: Text('${data.day}/${data.month}'),
-                                  ),
-                                  title: Text('${r['nome_treino'] ?? 'Treino'}'),
-                                  subtitle: Text('$diaSemana'),
-                                  trailing: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text('${r['kg_levantados']} kg'),
-                                      Text('${r['tempo_treino_minutos']} min'),
-                                      Text('${r['distancia_km']} km'),
-                                    ],
-                                  ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Header do card
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                            Icons.fitness_center,
+                                            color: Color(0xFF3B82F6),
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Treino #${item['treino_id']}',
+                                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              Text(
+                                                _formatarData(item['data_registro']),
+                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                  color: const Color(0xFF6B7280),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '${item['pontos_ganhos']} pts',
+                                            style: const TextStyle(
+                                              color: Color(0xFF3B82F6),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 20),
+                                    
+                                    // Estatísticas
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildStat(
+                                          'Peso Total',
+                                          '${item['kg_levantados']} kg',
+                                          Icons.fitness_center,
+                                          const Color(0xFF3B82F6),
+                                        ),
+                                        _buildStat(
+                                          'Tempo',
+                                          '${item['tempo_treino_minutos']} min',
+                                          Icons.timer,
+                                          const Color(0xFF60A5FA),
+                                        ),
+                                        _buildStat(
+                                          'Distância',
+                                          '${item['distancia_km']} km',
+                                          Icons.directions_run,
+                                          const Color(0xFF93C5FD),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -174,10 +282,115 @@ class _HistoricoPageState extends State<HistoricoPage> {
     return Column(
       children: [
         Icon(icon, color: Colors.white, size: 28),
-        const SizedBox(height: 4),
-        Text(valor, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 8),
+        Text(
+          valor,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
+  }
+
+  Widget _resumoCard(String label, int valor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      child: Column(
+        children: [
+          Text(
+            '$valor',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF6366F1),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: const Color(0xFF6B7280),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStat(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 16,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: color,
+            fontSize: 12,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatarData(String data) {
+    try {
+      final date = DateTime.parse(data);
+      final now = DateTime.now();
+      final difference = now.difference(date).inDays;
+      
+      if (difference == 0) {
+        return 'Hoje';
+      } else if (difference == 1) {
+        return 'Ontem';
+      } else if (difference < 7) {
+        return 'Há $difference dias';
+      } else {
+        return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      }
+    } catch (e) {
+      return data;
+    }
   }
 } 
