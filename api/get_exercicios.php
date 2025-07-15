@@ -32,7 +32,7 @@ try {
     $mysqli->set_charset('utf8');
     
     // Preparar consulta
-    $stmt = $mysqli->prepare("SELECT * FROM exercicios WHERE id_treino = ? ORDER BY id");
+    $stmt = $mysqli->prepare("SELECT * FROM exercicios WHERE id_treino = ? ORDER BY COALESCE(ordem, id)");
     if (!$stmt) {
         throw new Exception('Erro ao preparar consulta: ' . $mysqli->error);
     }

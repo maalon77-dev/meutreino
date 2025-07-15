@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'exercicios_treino_page.dart';
+import 'dart:async'; // Import para Timer
 
 class TreinarPage extends StatefulWidget {
   final void Function(Map<String, dynamic> treino)? onTreinoSelecionado;
@@ -433,6 +434,365 @@ class _TreinarPageState extends State<TreinarPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+} 
+
+class ExecucaoTreinoPage extends StatefulWidget {
+  final String nomeTreino;
+  final List<Map<String, dynamic>> exercicios;
+
+  const ExecucaoTreinoPage({
+    Key? key,
+    required this.nomeTreino,
+    required this.exercicios,
+  }) : super(key: key);
+
+  @override
+  State<ExecucaoTreinoPage> createState() => _ExecucaoTreinoPageState();
+}
+
+class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
+  int exercicioAtual = 0;
+  int serieAtual = 1;
+  late Stopwatch stopwatch;
+  late final PageController _pageController;
+  bool descansando = false;
+  int tempoRestante = 0;
+  Timer? timerDescanso;
+
+  @override
+  void initState() {
+    super.initState();
+    stopwatch = Stopwatch()..start();
+    _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    stopwatch.stop();
+    _pageController.dispose();
+    timerDescanso?.cancel();
+    super.dispose();
+  }
+
+  void avancarExercicio() {
+    if (exercicioAtual < widget.exercicios.length - 1) {
+      setState(() {
+        exercicioAtual++;
+        serieAtual = 1;
+        descansando = false;
+        tempoRestante = 0;
+        timerDescanso?.cancel();
+      });
+      _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    }
+  }
+
+  void iniciarDescanso(int segundos) {
+    setState(() {
+      descansando = true;
+      tempoRestante = segundos;
+    });
+    timerDescanso?.cancel();
+    timerDescanso = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (tempoRestante > 1) {
+        setState(() {
+          tempoRestante--;
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          descansando = false;
+          tempoRestante = 0;
+        });
+      }
+    });
+  }
+
+  void concluirSerie() {
+    final ex = widget.exercicios[exercicioAtual];
+    final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
+    final tempoDescanso = int.tryParse(ex['tempo_descanso']?.toString() ?? '0') ?? 0;
+    if (serieAtual < totalSeries) {
+      iniciarDescanso(tempoDescanso > 0 ? tempoDescanso : 0);
+      setState(() {
+        serieAtual++;
+      });
+    } else {
+      avancarExercicio();
+    }
+  }
+
+  void pularExercicio() {
+    avancarExercicio();
+  }
+
+  void concluirExercicio() {
+    avancarExercicio();
+  }
+
+  String formatTime(int seconds) {
+    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '00 : $min : $sec';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final exs = widget.exercicios;
+    return Scaffold(
+      backgroundColor: const Color(0xFFEFF4FF),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(widget.nomeTreino, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFF2563EB)),
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: const Color(0xFF2563EB),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                const Icon(Icons.timer, color: Colors.white, size: 20),
+                const SizedBox(height: 2),
+                StreamBuilder<int>(
+                  stream: Stream.periodic(const Duration(seconds: 1), (_) => stopwatch.elapsed.inSeconds),
+                  builder: (context, snapshot) {
+                    final t = snapshot.data ?? 0;
+                    return Text(
+                      formatTime(t),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: exs.length,
+              itemBuilder: (context, idx) {
+                final ex = exs[idx];
+                final nome = (ex['nome_do_exercicio'] ?? '').toString().toUpperCase();
+                final img = ex['foto_gif'] ?? '';
+                final reps = ex['numero_repeticoes']?.toString() ?? '-';
+                final peso = ex['peso']?.toString() ?? '-';
+                final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
+                return Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: img.isNotEmpty
+                                    ? Image.network('https://airfit.online/$img', width: 120, height: 120, fit: BoxFit.cover)
+                                    : const Icon(Icons.image, size: 100, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                nome,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF2563EB),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _InfoBlock(
+                                    icon: Icons.repeat,
+                                    label: 'Séries',
+                                    value: '${serieAtual} / $totalSeries',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _InfoBlock(
+                                    icon: Icons.cyclone,
+                                    label: 'Repetições',
+                                    value: reps,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _InfoBlock(
+                                    icon: Icons.fitness_center,
+                                    label: 'Peso',
+                                    value: '$peso kg',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              // Progressão de séries
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: _BarraProgressoSeries(
+                                  total: totalSeries,
+                                  atual: serieAtual,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  exs.length,
+                                  (i) => Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: i == exercicioAtual ? const Color(0xFF2563EB) : Colors.grey[300],
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: descansando ? null : concluirSerie,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.black,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      child: descansando
+                                          ? Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                const Icon(Icons.timer, size: 18, color: Colors.white),
+                                                const SizedBox(width: 8),
+                                                Text('Descansando... $tempoRestante s', style: const TextStyle(fontSize: 16)),
+                                              ],
+                                            )
+                                          : const Text('Concluir série'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: concluirExercicio,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey[300],
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      child: const Text('Concluir exercício'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: pularExercicio,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        side: const BorderSide(color: Color(0xFF2563EB)),
+                                      ),
+                                      child: const Text('Pular exercício'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBlock extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _InfoBlock({required this.icon, required this.label, required this.value});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F7FE),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB))),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        ],
+      ),
+    );
+  }
+} 
+
+class _BarraProgressoSeries extends StatelessWidget {
+  final int total;
+  final int atual;
+  const _BarraProgressoSeries({required this.total, required this.atual});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(total, (i) =>
+        Expanded(
+          child: Container(
+            margin: EdgeInsets.only(left: i == 0 ? 0 : 4),
+            height: 10,
+            decoration: BoxDecoration(
+              color: i < atual ? const Color(0xFF2563EB) : const Color(0xFFE0E7EF),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
         ),
       ),
     );
