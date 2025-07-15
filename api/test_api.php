@@ -1,14 +1,14 @@
 <?php
-// Headers básicos
+// Configuração básica
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Headers
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
-
-// Resto da API (código original)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 // Configurações do banco
 $host = 'academia3322.mysql.dbaas.com.br';
@@ -29,9 +29,36 @@ if ($conn->connect_error) {
 $tabela = $_REQUEST['tabela'] ?? '';
 $acao = $_REQUEST['acao'] ?? '';
 
-// Verificar parâmetros obrigatórios
-if (!$acao) {
-    echo json_encode(['erro' => 'Ação é obrigatória']);
+// Verificar se é a ação corrigida listar_por_treino
+if ($acao === 'listar_por_treino') {
+    $id_treino = intval($_REQUEST['id_treino'] ?? 0);
+    
+    if ($id_treino === 0) {
+        echo json_encode(['erro' => 'id_treino obrigatório']);
+        exit;
+    }
+    
+    // Query simples e direta
+    $sql = "SELECT * FROM exercicios WHERE id_treino = $id_treino";
+    $result = $conn->query($sql);
+    
+    if (!$result) {
+        echo json_encode(['erro' => 'Erro na query: ' . $conn->error]);
+        exit;
+    }
+    
+    $dados = [];
+    while ($row = $result->fetch_assoc()) {
+        $dados[] = $row;
+    }
+    
+    echo json_encode($dados);
+    exit;
+}
+
+// Verificar parâmetros obrigatórios para outras ações
+if (!$tabela || !$acao) {
+    echo json_encode(['erro' => 'Tabela e ação são obrigatórias']);
     exit;
 }
 
@@ -41,37 +68,7 @@ function esc($str) {
 }
 
 switch ($acao) {
-    case 'listar_por_treino':
-        $id_treino = intval($_REQUEST['id_treino'] ?? 0);
-        if ($id_treino === 0) {
-            echo json_encode(['erro' => 'id_treino obrigatório']);
-            break;
-        }
-        $sql = "SELECT * FROM exercicios WHERE id_treino = ?";
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            echo json_encode(['erro' => 'Erro no prepare: ' . $conn->error]);
-            break;
-        }
-        $stmt->bind_param('i', $id_treino);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if (!$result) {
-            echo json_encode(['erro' => 'Erro na consulta: ' . $stmt->error]);
-            break;
-        }
-        $dados = [];
-        while ($row = $result->fetch_assoc()) {
-            $dados[] = $row;
-        }
-        echo json_encode($dados);
-        break;
-
     case 'listar':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $sql = "SELECT * FROM `$tabela`";
         $result = $conn->query($sql);
         if (!$result) {
@@ -86,10 +83,6 @@ switch ($acao) {
         break;
 
     case 'buscar':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $id = intval($_REQUEST['id'] ?? 0);
         $sql = "SELECT * FROM `$tabela` WHERE id = ?";
         $stmt = $conn->prepare($sql);
@@ -100,10 +93,6 @@ switch ($acao) {
         break;
 
     case 'inserir':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $dados = $_POST;
         unset($dados['tabela'], $dados['acao']);
         $campos = implode(',', array_map('esc', array_keys($dados)));
@@ -117,10 +106,6 @@ switch ($acao) {
         break;
 
     case 'atualizar':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $id = intval($_POST['id'] ?? 0);
         $dados = $_POST;
         unset($dados['tabela'], $dados['acao'], $dados['id']);
@@ -147,10 +132,6 @@ switch ($acao) {
         break;
 
     case 'deletar':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $id = intval($_REQUEST['id'] ?? 0);
         $sql = "DELETE FROM `$tabela` WHERE id=?";
         $stmt = $conn->prepare($sql);
@@ -160,10 +141,6 @@ switch ($acao) {
         break;
 
     case 'login':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $email = $_POST['email'] ?? '';
         $senha = $_POST['senha'] ?? '';
         $sql = "SELECT * FROM `$tabela` WHERE email=? AND password=?";
@@ -180,10 +157,6 @@ switch ($acao) {
         break;
 
     case 'historico_usuario':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $usuario_id = intval($_REQUEST['usuario_id'] ?? 0);
         if ($usuario_id === 0) {
             echo json_encode(['erro' => 'usuario_id obrigatório']);
@@ -202,10 +175,6 @@ switch ($acao) {
         break;
 
     case 'treinos_usuario':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $usuario_id = intval($_REQUEST['usuario_id'] ?? 0);
         if ($usuario_id === 0) {
             echo json_encode(['erro' => 'usuario_id obrigatório']);
@@ -224,10 +193,6 @@ switch ($acao) {
         break;
 
     case 'listar_todos':
-        if (!$tabela) {
-            echo json_encode(['erro' => 'Tabela é obrigatória']);
-            break;
-        }
         $sql = "SELECT * FROM `$tabela`";
         $result = $conn->query($sql);
         $dados = [];

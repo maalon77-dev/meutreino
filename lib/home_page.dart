@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
+import 'exercicios_treino_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -21,6 +22,11 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = true;
   List<Widget> _pages = [];
 
+  // Novo estado para navegação interna
+  Map<String, dynamic>? _treinoSelecionado;
+  List<Map<String, dynamic>> _exerciciosSelecionados = [];
+  bool _carregandoExercicios = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,9 +38,16 @@ class _HomePageState extends State<HomePage> {
     _pages = [
       _HomeContent(),
       const Center(child: Text('Carregando histórico...')),
-      TreinarPage(),
-      AssistentePage(),
-      PerfilPage(),
+      TreinarPage(
+        onTreinoSelecionado: (treino) {
+          setState(() {
+            _treinoSelecionado = treino;
+            _exerciciosSelecionados = List<Map<String, dynamic>>.from(treino['exercicios'] ?? []);
+          });
+        },
+      ),
+      const Center(child: Text('Assistente')),
+      const Center(child: Text('Perfil')),
     ];
   }
 
@@ -78,7 +91,26 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }
-    
+    // Lógica para exibir ExerciciosTreinoPage no centro
+    Widget conteudoCentral;
+    if (_treinoSelecionado != null) {
+      if (_carregandoExercicios) {
+        conteudoCentral = Center(child: CircularProgressIndicator());
+      } else {
+        conteudoCentral = ExerciciosTreinoPage(
+          treino: _treinoSelecionado!,
+          exercicios: _exerciciosSelecionados,
+          onVoltar: () {
+            setState(() {
+              _treinoSelecionado = null;
+              _exerciciosSelecionados = [];
+            });
+          },
+        );
+      }
+    } else {
+      conteudoCentral = _pages[_selectedIndex];
+    }
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.transparent,
@@ -88,6 +120,8 @@ class _HomePageState extends State<HomePage> {
         onMenuTap: (index) {
           setState(() {
             _selectedIndex = index;
+            _treinoSelecionado = null;
+            _exerciciosSelecionados = [];
           });
           Navigator.pop(context);
         },
@@ -98,13 +132,21 @@ class _HomePageState extends State<HomePage> {
         iconTheme: IconThemeData(
           color: isDark ? Colors.white : const Color(0xFF374151),
         ),
-        title: Text(
-          'UPMAX Fitness',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: isDark ? Colors.white : const Color(0xFF374151),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        title: _treinoSelecionado != null
+            ? Text(
+                _treinoSelecionado?['nome_treino'] ?? 'Treino',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF374151),
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            : Text(
+                'UPMAX Fitness',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF374151),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -120,28 +162,24 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark 
-              ? [const Color(0xFF020617), const Color(0xFF0F172A)] // Azuis muito escuros
+              ? [const Color(0xFF020617), const Color(0xFF0F172A)]
               : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-        child: _pages.isNotEmpty ? _pages[_selectedIndex] : Center(
-          child: CircularProgressIndicator(
-            color: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
-          ),
-        ),
+        child: conteudoCentral,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white, // Azul muito escuro
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
           boxShadow: [
             BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -154,11 +192,11 @@ class _HomePageState extends State<HomePage> {
             topRight: Radius.circular(24),
           ),
           child: BottomNavigationBar(
-              backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white, // Azul muito escuro
+              backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
             elevation: 0,
             type: BottomNavigationBarType.fixed,
-              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6), // Azul médio
-              unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF), // Azul mais claro
+              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
+              unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF),
               selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -182,6 +220,8 @@ class _HomePageState extends State<HomePage> {
             onTap: (index) {
               setState(() {
                 _selectedIndex = index;
+                _treinoSelecionado = null;
+                _exerciciosSelecionados = [];
               });
             },
             ),
