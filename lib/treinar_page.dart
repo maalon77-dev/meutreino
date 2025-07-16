@@ -472,6 +472,10 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   @override
   void initState() {
     super.initState();
+    
+    // Verificar se todos os exercícios estão concluídos e resetar se necessário
+    _verificarEResetarExercicios();
+    
     stopwatch = Stopwatch()..start();
     _pageController = PageController(initialPage: 0);
     
@@ -577,7 +581,200 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   }
 
   void concluirExercicio() {
-    avancarExercicio();
+    setState(() {
+      // Marcar o exercício atual como concluído
+      widget.exercicios[0]['concluido'] = true;
+      
+      // Mover o exercício concluído para o final da lista
+      final exercicioConcluido = widget.exercicios.removeAt(0);
+      widget.exercicios.add(exercicioConcluido);
+      
+      // Resetar variáveis do treino
+      exercicioAtual = 0;
+      serieAtual = 1;
+      descansando = false;
+      tempoRestante = 0;
+      timerDescanso?.cancel();
+    });
+    
+    // Verificar se todos os exercícios foram concluídos
+    _verificarConclusaoTreino();
+  }
+
+  void _verificarEResetarExercicios() {
+    final todosExerciciosConcluidos = widget.exercicios.every((ex) => ex['concluido'] == true);
+    if (todosExerciciosConcluidos) {
+      // Se todos estão concluídos, resetar todos os exercícios para disponíveis
+      for (var exercicio in widget.exercicios) {
+        exercicio['concluido'] = false;
+      }
+      print('Todos os exercícios foram resetados - treino reiniciado');
+    }
+  }
+
+  void _resetarTodosExercicios() {
+    setState(() {
+      // Resetar todos os exercícios
+      for (var exercicio in widget.exercicios) {
+        exercicio['concluido'] = false;
+      }
+      
+      // Resetar variáveis do treino
+      exercicioAtual = 0;
+      serieAtual = 1;
+      descansando = false;
+      tempoRestante = 0;
+      timerDescanso?.cancel();
+      
+      // Reiniciar cronômetro
+      stopwatch.reset();
+      stopwatch.start();
+    });
+    
+    print('Treino resetado - todos os exercícios disponíveis novamente');
+  }
+
+  void _verificarConclusaoTreino() {
+    final todosExerciciosConcluidos = widget.exercicios.every((ex) => ex['concluido'] == true);
+    if (todosExerciciosConcluidos) {
+      stopwatch.stop();
+      _mostrarPopupConclusao();
+    }
+  }
+
+  void _mostrarPopupConclusao() {
+    final tempoTotal = stopwatch.elapsed.inSeconds;
+    final TextEditingController kmController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              const SizedBox(width: 8),
+              Text('Treino Concluído!'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Parabéns! Você concluiu todos os exercícios.',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tempo Total: ${formatTime(tempoTotal)}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.green),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: kmController,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Quantos KM foram percorridos?',
+                  hintText: 'Ex: 5.5',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixText: 'KM',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Resetar exercícios para continuar treinando
+                _resetarTodosExercicios();
+              },
+              child: Text('Continuar Treinando'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final kmPercorridos = double.tryParse(kmController.text) ?? 0.0;
+                _salvarTreinoCompleto(tempoTotal, kmPercorridos);
+                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Voltar para a tela anterior
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Salvar e Sair'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _salvarTreinoCompleto(int tempoSegundos, double kmPercorridos) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      print('Salvando treino: usuarioId=$usuarioId, nome=${widget.nomeTreino}, tempo=$tempoSegundos, km=$kmPercorridos');
+      
+      if (usuarioId != null) {
+        final url = Uri.parse('https://airfit.online/api/historico_treinos.php');
+        final body = {
+          'usuario_id': usuarioId.toString(),
+          'nome_treino': widget.nomeTreino,
+          'tempo_total': tempoSegundos.toString(),
+          'km_percorridos': kmPercorridos.toString(),
+          'data_treino': DateTime.now().toIso8601String(),
+        };
+        
+        print('URL: $url');
+        print('Body: $body');
+        
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: body,
+        );
+        
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          try {
+            final responseData = jsonDecode(response.body);
+            if (responseData['sucesso'] == true) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Treino salvo com sucesso!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else {
+              throw Exception(responseData['erro'] ?? 'Erro desconhecido');
+            }
+          } catch (jsonError) {
+            print('Erro ao decodificar JSON: $jsonError');
+            throw Exception('Resposta inválida do servidor');
+          }
+        } else {
+          throw Exception('Erro HTTP ${response.statusCode}: ${response.body}');
+        }
+      } else {
+        throw Exception('Usuário não logado');
+      }
+    } catch (e) {
+      print('Erro ao salvar treino: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar treino: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String formatTime(int seconds) {
@@ -713,13 +910,20 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               final ex = exs[idx];
               final nome = (ex['nome_do_exercicio'] ?? '').toString();
               final img = ex['foto_gif'] ?? '';
+              final isConcluido = ex['concluido'] == true;
+              
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Container(
-                  height: 80,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: isConcluido 
+                        ? const Color(0xFFE8F5E8) // Verde claro para concluído
+                        : const Color(0xFFF5F5F5), // Cinza para pendente
                     borderRadius: BorderRadius.circular(16),
+                    border: isConcluido 
+                        ? Border.all(color: const Color(0xFF4CAF50), width: 1)
+                        : null,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.04),
@@ -732,42 +936,46 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                     children: [
                       // GIF pausado à esquerda
                       Container(
-                        width: 80,
-                        height: 80,
+                        width: 60,
+                        height: 60,
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8E8E8),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                               child: img.isNotEmpty
                                   ? Image.network(
                                       'https://airfit.online/$img',
-                                      width: 80,
-                                      height: 80,
+                                      width: 60,
+                                      height: 60,
                                       fit: BoxFit.cover,
                                       // Simula GIF pausado mostrando apenas o primeiro frame
                                       gaplessPlayback: true,
                                     )
                                   : Icon(
                                       Icons.image,
-                                      size: 32,
+                                      size: 24,
                                       color: Colors.grey[500],
                                     ),
                             ),
-                            // Overlay indicando que está pausado
+                            // Overlay indicando estado do exercício
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(16),
+                                color: isConcluido 
+                                    ? const Color(0xFF4CAF50).withOpacity(0.8)
+                                    : Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Center(
                                 child: Icon(
-                                  Icons.pause,
+                                  isConcluido 
+                                      ? Icons.check_circle
+                                      : Icons.pause,
                                   color: Colors.white,
-                                  size: 24,
+                                  size: 20,
                                 ),
                               ),
                             ),
@@ -775,59 +983,85 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                         ),
                       ),
                       
+                      const SizedBox(width: 16),
+                      
                       // Nome do exercício no centro
                       Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            nome,
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF2A2A2A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                            ),
+                        child: Text(
+                          nome,
+                          style: GoogleFonts.poppins(
+                            color: isConcluido 
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFF2A2A2A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                            decoration: isConcluido 
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
                           ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       
-                      // Botão de play à direita
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              final item = exs.removeAt(idx);
-                              exs.insert(0, item);
-                              exercicioAtual = 0;
-                              serieAtual = 1;
-                              descansando = false;
-                              tempoRestante = 0;
-                              timerDescanso?.cancel();
-                            });
-                          },
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFCDFF47),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
+                      const SizedBox(width: 16),
+                      
+                      // Botão de play à direita ou ícone de concluído
+                      isConcluido
+                          ? Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CAF50),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            )
+                          : GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  final item = exs.removeAt(idx);
+                                  exs.insert(0, item);
+                                  exercicioAtual = 0;
+                                  serieAtual = 1;
+                                  descansando = false;
+                                  tempoRestante = 0;
+                                  timerDescanso?.cancel();
+                                });
+                              },
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFCDFF47),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                                child: Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.black,
+                                  size: 24,
+                                ),
+                              ),
                             ),
-                            child: Icon(
-                              Icons.play_arrow,
-                              color: Colors.black,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -948,10 +1182,10 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
 
      Widget _buildGifBackgroundLayout(String img, String nome, String reps, String peso, int totalSeries, bool isDark) {
      return Container(
-       height: 180,
+       height: 200,
                 child: Container(
            width: double.infinity,
-           height: 160,
+           height: 180,
            decoration: BoxDecoration(
              color: Colors.white, // Fundo branco
              borderRadius: BorderRadius.circular(20),
@@ -966,7 +1200,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                top: 0,
                child: Container(
                  width: 200,
-                 height: 208, // Aumentado de 160 para 208 (30% de aumento)
+                 height: 180,
                  child: ClipRRect(
                    borderRadius: BorderRadius.circular(20), // Cantos arredondados completos
                    child: img.isNotEmpty
@@ -974,7 +1208,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                            'https://airfit.online/$img',
                            fit: BoxFit.cover,
                            width: 200,
-                           height: 208, // Aumentado de 160 para 208
+                           height: 180,
                          )
                        : Container(
                            color: Colors.white,
@@ -1005,7 +1239,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        style: GoogleFonts.poppins(
                          color: Colors.black,
                          fontWeight: FontWeight.w700,
-                         fontSize: 16,
+                         fontSize: 14,
                          letterSpacing: 0.3,
                          height: 1.2,
                          shadows: [
@@ -1016,6 +1250,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                            ),
                          ],
                        ),
+                       maxLines: 3,
+                       overflow: TextOverflow.ellipsis,
                      ),
                    ),
                   
@@ -1118,6 +1354,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                            ),
                          ],
                        ),
+                       softWrap: true,
+                       overflow: TextOverflow.visible,
                      ),
                    ),
                    
