@@ -4,8 +4,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'exercicios_treino_page.dart';
 import 'dart:async'; // Import para Timer
-import 'package:provider/provider.dart';
-import 'theme_provider.dart';
 import 'home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
@@ -192,14 +190,10 @@ class _TreinarPageState extends State<TreinarPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isDark 
-            ? [const Color(0xFF111827), const Color(0xFF1F2937)]
-            : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
+          colors: [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -215,7 +209,7 @@ class _TreinarPageState extends State<TreinarPage> {
                 'Meus Treinos',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF374151),
+                  color: const Color(0xFF374151),
                 ),
               ),
               const SizedBox(height: 16),
@@ -243,7 +237,7 @@ class _TreinarPageState extends State<TreinarPage> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.4 : 0.15),
+                    color: Colors.black.withOpacity(0.15),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -289,7 +283,7 @@ class _TreinarPageState extends State<TreinarPage> {
                       child: Text(
                         'Criar Treino',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+                          color: const Color(0xFF3B82F6),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -304,16 +298,14 @@ class _TreinarPageState extends State<TreinarPage> {
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isDark 
-                    ? [const Color(0xFF6366F1), const Color(0xFF8B5CF6)]
-                    : [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
+                  colors: [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withOpacity(0.3),
+                    color: const Color(0xFF3B82F6).withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -378,7 +370,7 @@ class _TreinarPageState extends State<TreinarPage> {
                       child: Text(
                         'Treinos Prontos',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+                          color: const Color(0xFF3B82F6),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -397,17 +389,16 @@ class _TreinarPageState extends State<TreinarPage> {
     required Map<String, dynamic> treino,
     required String nomeTreino,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => _abrirExerciciosTreino(context, treino),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+            color: const Color(0xFFE5E7EB),
             width: 1,
           ),
         ),
@@ -417,7 +408,7 @@ class _TreinarPageState extends State<TreinarPage> {
             Text(
               nomeTreino,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: isDark ? Colors.white : const Color(0xFF374151),
+                color: const Color(0xFF374151),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -427,13 +418,13 @@ class _TreinarPageState extends State<TreinarPage> {
                 Icon(
                   Icons.fitness_center,
                   size: 16,
-                  color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                  color: const Color(0xFF6B7280),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Exercícios: ${treino['total_exercicios'] ?? 0}',
                   style: TextStyle(
-                    color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+                    color: const Color(0xFF6B7280),
                   ),
                 ),
               ],
@@ -597,15 +588,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
     final exs = widget.exercicios;
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
-        darkTheme: isDark,
-        onThemeChanged: (val) => themeProvider.setTheme(val),
+        darkTheme: false,
+        onThemeChanged: (val) => {},
         onMenuTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -614,15 +603,15 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         },
       ),
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+        backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF374151),
+          color: const Color(0xFF374151),
         ),
         title: Text(
           widget.nomeTreino,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: isDark ? Colors.white : const Color(0xFF374151),
+            color: const Color(0xFF374151),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -630,19 +619,19 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         actions: [
           IconButton(
             icon: Icon(
-              isDark ? Icons.nightlight_round : Icons.nightlight_outlined,
-              color: isDark ? Colors.white : const Color(0xFF374151),
+              Icons.notifications_outlined,
+              color: const Color(0xFF374151),
             ),
-            onPressed: () => themeProvider.toggleTheme(),
+            onPressed: () {
+              // Função de notificação
+            },
           ),
         ],
       ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: isDark 
-              ? [const Color(0xFF111827), const Color(0xFF1F2937)]
-              : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
+            colors: [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -672,17 +661,17 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
-                              blurRadius: isDark ? 30 : 20,
-                              offset: Offset(0, isDark ? 15 : 10),
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
                             ),
                           ],
                         ),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.transparent : Colors.white,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(28),
-                            border: isDark ? null : Border.all(
+                            border: Border.all(
                               color: const Color(0xFF3B82F6).withOpacity(0.2),
                               width: 1,
                             ),
@@ -694,24 +683,20 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                                 padding: const EdgeInsets.all(28),
                                                                  child: Column(
                                    children: [
-                                     // Header com timer holográfico
-                                     _buildHolographicHeader(isDark),
-                                     const SizedBox(height: 24),
-                                     
-                                     // Layout com GIF como fundo suave
-                                     _buildGifBackgroundLayout(img, nome, reps, peso, totalSeries, isDark),
-                                     const SizedBox(height: 24),
-                                     
-                                     // Barra de progresso futurista
-                                     _buildFuturisticProgressBar(totalSeries, isDark),
-                                     const SizedBox(height: 28),
-                                     
-                                     // Divisor holográfico
-                                     if (isDark) _buildHolographicDivider(),
-                                     if (isDark) const SizedBox(height: 24),
-                                     
-                                     // Painel de controle futurista
-                                     _buildFuturisticControlPanel(isDark),
+                                                                      // Header com timer
+                                 _buildHolographicHeader(false),
+                                 const SizedBox(height: 24),
+                                 
+                                 // Layout com GIF como fundo suave
+                                 _buildGifBackgroundLayout(img, nome, reps, peso, totalSeries, false),
+                                 const SizedBox(height: 24),
+                                 
+                                 // Barra de progresso
+                                 _buildFuturisticProgressBar(totalSeries, false),
+                                 const SizedBox(height: 28),
+                                 
+                                 // Painel de controle
+                                 _buildFuturisticControlPanel(false),
                                    ],
                                  ),
                               ),
@@ -733,9 +718,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 child: Container(
                   height: 80,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.transparent : const Color(0xFFF5F5F5),
+                    color: const Color(0xFFF5F5F5),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: isDark ? null : [
+                    boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.04),
                         blurRadius: 8,
@@ -750,7 +735,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.transparent : const Color(0xFFE8E8E8),
+                          color: const Color(0xFFE8E8E8),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Stack(
@@ -775,13 +760,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                             // Overlay indicando que está pausado
                             Container(
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.transparent : Colors.black.withOpacity(0.3),
+                                color: Colors.black.withOpacity(0.3),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Center(
                                 child: Icon(
                                   Icons.pause,
-                                  color: isDark ? Colors.white : Colors.white,
+                                  color: Colors.white,
                                   size: 24,
                                 ),
                               ),
@@ -797,13 +782,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                           child: Text(
                             nome,
                             style: GoogleFonts.poppins(
-                              color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+                              color: const Color(0xFF2A2A2A),
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.2,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
@@ -827,9 +810,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.transparent : const Color(0xFFCDFF47),
+                              color: const Color(0xFFCDFF47),
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: isDark ? null : [
+                              boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.1),
                                   blurRadius: 4,
@@ -839,7 +822,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                             ),
                             child: Icon(
                               Icons.play_arrow,
-                              color: isDark ? Colors.white : Colors.black,
+                              color: Colors.black,
                               size: 24,
                             ),
                           ),
@@ -855,14 +838,14 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          color: Colors.white,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -875,11 +858,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               topRight: Radius.circular(24),
             ),
             child: BottomNavigationBar(
-              backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+              backgroundColor: Colors.white,
               elevation: 0,
               type: BottomNavigationBarType.fixed,
-              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
-              unselectedItemColor: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF9CA3AF),
+              selectedItemColor: const Color(0xFF3B82F6),
+              unselectedItemColor: const Color(0xFF9CA3AF),
               selectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -893,11 +876,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               showUnselectedLabels: true,
               iconSize: 24,
               items: [
-                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, isDark),
-                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, isDark),
-                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, isDark),
-                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, isDark),
-                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, isDark),
+                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, false),
+                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, false),
+                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, false),
+                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, false),
+                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, false),
               ],
               currentIndex: _selectedIndex,
               onTap: (index) {
@@ -920,10 +903,10 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF374151) : const Color(0xFFF8FAFC),
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
+          color: const Color(0xFFE5E7EB),
           width: 1,
         ),
       ),
@@ -933,7 +916,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           Text(
             'TREINO ATIVO',
             style: GoogleFonts.poppins(
-              color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6),
+              color: const Color(0xFF3B82F6),
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1,
@@ -942,17 +925,17 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF059669).withOpacity(0.2) : Colors.green.withOpacity(0.1),
+              color: Colors.green.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDark ? const Color(0xFF059669) : Colors.green,
+                color: Colors.green,
                 width: 1,
               ),
             ),
             child: Text(
               formatTime(stopwatch.elapsed.inSeconds),
               style: GoogleFonts.poppins(
-                color: isDark ? const Color(0xFF10B981) : Colors.green,
+                color: Colors.green,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -970,7 +953,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
            width: double.infinity,
            height: 160,
            decoration: BoxDecoration(
-             color: isDark ? Colors.transparent : Colors.white, // Fundo transparente no dark
+             color: Colors.white, // Fundo branco
              borderRadius: BorderRadius.circular(20),
              // Removendo boxShadow (bordas/sombras)
            ),
@@ -1020,23 +1003,19 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                      child: Text(
                        nome,
                        style: GoogleFonts.poppins(
-                         color: isDark ? Colors.white : Colors.black,
+                         color: Colors.black,
                          fontWeight: FontWeight.w700,
                          fontSize: 16,
                          letterSpacing: 0.3,
                          height: 1.2,
                          shadows: [
                            Shadow(
-                             color: isDark 
-                                 ? Colors.black.withOpacity(0.5)
-                                 : Colors.white.withOpacity(0.3),
+                             color: Colors.white.withOpacity(0.3),
                              blurRadius: 1,
                              offset: const Offset(0.5, 0.5),
                            ),
                          ],
                        ),
-                       maxLines: 2,
-                       overflow: TextOverflow.ellipsis,
                      ),
                    ),
                   
@@ -1139,8 +1118,6 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                            ),
                          ],
                        ),
-                       maxLines: 2,
-                       overflow: TextOverflow.ellipsis,
                      ),
                    ),
                    
@@ -1623,7 +1600,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
          Text(
            'Progresso das Séries',
            style: GoogleFonts.poppins(
-             color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+             color: const Color(0xFF666666),
              fontSize: 12,
              fontWeight: FontWeight.w500,
            ),
@@ -1641,8 +1618,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                      height: 6,
                      decoration: BoxDecoration(
                        color: isCompleted 
-                           ? (isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47))
-                           : (isDark ? const Color(0xFF4B5563) : const Color(0xFFE8E8E8)),
+                           ? const Color(0xFFCDFF47)
+                           : const Color(0xFFE8E8E8),
                        borderRadius: BorderRadius.circular(3),
                      ),
                    ),
@@ -1656,7 +1633,6 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
    }
 
    Widget _buildEnhancedStats(String reps, String peso, int totalSeries) {
-     final isDark = Theme.of(context).brightness == Brightness.dark;
      return Container(
        padding: const EdgeInsets.all(12),
        child: Column(
@@ -1670,13 +1646,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                Container(
                  padding: const EdgeInsets.all(6),
                  decoration: BoxDecoration(
-                   color: isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47),
+                   color: const Color(0xFFCDFF47),
                    borderRadius: BorderRadius.circular(6),
                  ),
                  child: Icon(
                    Icons.repeat,
                    size: 14,
-                   color: isDark ? Colors.white : Colors.black,
+                   color: Colors.black,
                  ),
                ),
                const SizedBox(width: 8),
@@ -1687,14 +1663,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    Text(
                      'Séries',
                      style: GoogleFonts.poppins(
-                       color: isDark ? Colors.white : Colors.black,
+                       color: Colors.black,
                        fontSize: 10,
                        fontWeight: FontWeight.w500,
                        shadows: [
                          Shadow(
-                           color: isDark 
-                               ? Colors.black.withOpacity(0.5)
-                               : Colors.white.withOpacity(0.3),
+                           color: Colors.white.withOpacity(0.3),
                            blurRadius: 1,
                            offset: const Offset(0.5, 0.5),
                          ),
@@ -1704,14 +1678,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    Text(
                      '$serieAtual / $totalSeries',
                      style: GoogleFonts.poppins(
-                       color: isDark ? Colors.white : Colors.black,
+                       color: Colors.black,
                        fontSize: 14,
                        fontWeight: FontWeight.w700,
                        shadows: [
                          Shadow(
-                           color: isDark 
-                               ? Colors.black.withOpacity(0.5)
-                               : Colors.white.withOpacity(0.3),
+                           color: Colors.white.withOpacity(0.3),
                            blurRadius: 1,
                            offset: const Offset(0.5, 0.5),
                          ),
@@ -1736,7 +1708,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    Container(
                      padding: const EdgeInsets.all(6),
                      decoration: BoxDecoration(
-                       color: isDark ? const Color(0xFF374151) : const Color(0xFF2A2A2A),
+                       color: const Color(0xFF2A2A2A),
                        borderRadius: BorderRadius.circular(6),
                      ),
                      child: Icon(
@@ -1753,14 +1725,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        Text(
                          'Reps',
                          style: GoogleFonts.poppins(
-                           color: isDark ? Colors.white : Colors.black,
+                           color: Colors.black,
                            fontSize: 10,
                            fontWeight: FontWeight.w500,
                            shadows: [
                              Shadow(
-                               color: isDark 
-                                   ? Colors.black.withOpacity(0.5)
-                                   : Colors.white.withOpacity(0.3),
+                               color: Colors.white.withOpacity(0.3),
                                blurRadius: 1,
                                offset: const Offset(0.5, 0.5),
                              ),
@@ -1770,14 +1740,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        Text(
                          reps,
                          style: GoogleFonts.poppins(
-                           color: isDark ? Colors.white : Colors.black,
+                           color: Colors.black,
                            fontSize: 12,
                            fontWeight: FontWeight.w700,
                            shadows: [
                              Shadow(
-                               color: isDark 
-                                   ? Colors.black.withOpacity(0.5)
-                                   : Colors.white.withOpacity(0.3),
+                               color: Colors.white.withOpacity(0.3),
                                blurRadius: 1,
                                offset: const Offset(0.5, 0.5),
                              ),
@@ -1798,13 +1766,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    Container(
                      padding: const EdgeInsets.all(6),
                      decoration: BoxDecoration(
-                       color: isDark ? const Color(0xFF4B5563) : const Color(0xFFE8E8E8),
+                       color: const Color(0xFFE8E8E8),
                        borderRadius: BorderRadius.circular(6),
                      ),
                      child: Icon(
                        Icons.fitness_center,
                        size: 14,
-                       color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+                       color: const Color(0xFF666666),
                      ),
                    ),
                    const SizedBox(width: 6),
@@ -1815,14 +1783,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        Text(
                          'Peso',
                          style: GoogleFonts.poppins(
-                           color: isDark ? Colors.white : Colors.black,
+                           color: Colors.black,
                            fontSize: 10,
                            fontWeight: FontWeight.w500,
                            shadows: [
                              Shadow(
-                               color: isDark 
-                                   ? Colors.black.withOpacity(0.5)
-                                   : Colors.white.withOpacity(0.3),
+                               color: Colors.white.withOpacity(0.3),
                                blurRadius: 1,
                                offset: const Offset(0.5, 0.5),
                              ),
@@ -1832,14 +1798,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        Text(
                          '${peso}kg',
                          style: GoogleFonts.poppins(
-                           color: isDark ? Colors.white : Colors.black,
+                           color: Colors.black,
                            fontSize: 12,
                            fontWeight: FontWeight.w700,
                            shadows: [
                              Shadow(
-                               color: isDark 
-                                   ? Colors.black.withOpacity(0.5)
-                                   : Colors.white.withOpacity(0.3),
+                               color: Colors.white.withOpacity(0.3),
                                blurRadius: 1,
                                offset: const Offset(0.5, 0.5),
                              ),
@@ -1887,7 +1851,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                text: 'CONCLUIR\nEXERCÍCIO',
                onPressed: concluirExercicio,
                icon: Icons.done_all,
-               isDark: isDark,
+               isDark: false,
              ),
              
              // Botão central circular - Ação principal
@@ -1895,7 +1859,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                onPressed: descansando ? null : concluirSerie,
                isResting: descansando,
                restTime: tempoRestante,
-               isDark: isDark,
+               isDark: false,
              ),
              
              // Botão direito - Pular exercício
@@ -1903,7 +1867,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                text: 'PULAR\nEXERCÍCIO',
                onPressed: pularExercicio,
                icon: Icons.skip_next,
-               isDark: isDark,
+               isDark: false,
              ),
            ],
          ),
@@ -1924,12 +1888,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
          height: 64,
          decoration: BoxDecoration(
            color: onPressed != null 
-               ? (isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47))
-               : (isDark ? const Color(0xFF4B5563) : const Color(0xFFCCCCCC)),
+               ? const Color(0xFFCDFF47)
+               : const Color(0xFFCCCCCC),
            shape: BoxShape.circle,
            boxShadow: onPressed != null ? [
              BoxShadow(
-               color: Colors.black.withOpacity(isDark ? 0.2 : 0.1),
+               color: Colors.black.withOpacity(0.1),
                blurRadius: 8,
                offset: const Offset(0, 3),
              ),
@@ -1942,13 +1906,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    children: [
                      Icon(
                        Icons.pause,
-                       color: isDark ? Colors.white : Colors.black,
+                       color: Colors.black,
                        size: 18,
                      ),
                      Text(
                        '${restTime}s',
                        style: GoogleFonts.poppins(
-                         color: isDark ? Colors.white : Colors.black,
+                         color: Colors.black,
                          fontSize: 8,
                          fontWeight: FontWeight.w500,
                        ),
@@ -1958,8 +1922,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                : Icon(
                    Icons.play_arrow,
                    color: onPressed != null 
-                       ? (isDark ? Colors.white : Colors.black)
-                       : (isDark ? const Color(0xFF6B7280) : Colors.grey[600]),
+                       ? Colors.black
+                       : Colors.grey[600],
                    size: 24,
                  ),
          ),
@@ -1979,11 +1943,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
          width: 64,
          height: 64,
          decoration: BoxDecoration(
-           color: isDark ? const Color(0xFF374151) : const Color(0xFFF8F8F8),
+           color: const Color(0xFFF8F8F8),
            borderRadius: BorderRadius.circular(12),
            boxShadow: [
              BoxShadow(
-               color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+               color: Colors.black.withOpacity(0.04),
                blurRadius: 6,
                offset: const Offset(0, 2),
              ),
@@ -1994,7 +1958,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
            children: [
              Icon(
                icon,
-               color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+               color: const Color(0xFF666666),
                size: 18,
              ),
              const SizedBox(height: 3),
@@ -2002,7 +1966,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                text,
                textAlign: TextAlign.center,
                style: GoogleFonts.poppins(
-                 color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+                 color: const Color(0xFF666666),
                  fontSize: 8,
                  fontWeight: FontWeight.w500,
                  height: 1.1,
@@ -2092,7 +2056,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withOpacity(0.1) 
+            ? const Color(0xFF3B82F6).withOpacity(0.1) 
             : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -2100,8 +2064,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           icon,
           size: 24,
           color: isSelected 
-            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6))
-            : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF9CA3AF)),
+            ? const Color(0xFF3B82F6)
+            : const Color(0xFF9CA3AF),
         ),
       ),
       label: label,
