@@ -4,6 +4,11 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'exercicios_treino_page.dart';
 import 'dart:async'; // Import para Timer
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
+import 'home_page.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:vibration/vibration.dart';
 
 class TreinarPage extends StatefulWidget {
   final void Function(Map<String, dynamic> treino)? onTreinoSelecionado;
@@ -454,7 +459,8 @@ class ExecucaoTreinoPage extends StatefulWidget {
   State<ExecucaoTreinoPage> createState() => _ExecucaoTreinoPageState();
 }
 
-class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
+class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> 
+    with TickerProviderStateMixin {
   int exercicioAtual = 0;
   int serieAtual = 1;
   late Stopwatch stopwatch;
@@ -462,12 +468,51 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
   bool descansando = false;
   int tempoRestante = 0;
   Timer? timerDescanso;
+  int _selectedIndex = 2; // Treinar
+  
+  // Controladores de animação
+  late AnimationController _glowController;
+  late AnimationController _buttonController;
+  late AnimationController _progressController;
+  late Animation<double> _glowAnimation;
+  late Animation<double> _buttonAnimation;
+  late Animation<double> _progressAnimation;
 
   @override
   void initState() {
     super.initState();
     stopwatch = Stopwatch()..start();
     _pageController = PageController(initialPage: 0);
+    
+    // Inicializar animações
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _buttonController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _progressController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _glowAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+    
+    _buttonAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _buttonController, curve: Curves.easeInOut),
+    );
+    
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
+    );
+    
+    _progressController.forward();
   }
 
   @override
@@ -475,6 +520,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
     stopwatch.stop();
     _pageController.dispose();
     timerDescanso?.cancel();
+    _glowController.dispose();
+    _buttonController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -497,7 +545,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
       tempoRestante = segundos;
     });
     timerDescanso?.cancel();
-    timerDescanso = Timer.periodic(const Duration(seconds: 1), (timer) {
+    timerDescanso = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (tempoRestante > 1) {
         setState(() {
           tempoRestante--;
@@ -508,6 +556,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
           descansando = false;
           tempoRestante = 0;
         });
+        // Vibrar 5 vezes ao terminar o descanso
+        if (await Vibration.hasVibrator() ?? false) {
+          for (int i = 0; i < 5; i++) {
+            Vibration.vibrate(duration: 200);
+            await Future.delayed(const Duration(milliseconds: 250));
+          }
+        }
       }
     });
   }
@@ -542,212 +597,1517 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
     final exs = widget.exercicios;
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF4FF),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(widget.nomeTreino, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF2563EB)),
+      extendBody: true,
+      backgroundColor: Colors.transparent,
+      drawer: CustomDrawer(
+        darkTheme: isDark,
+        onThemeChanged: (val) => themeProvider.setTheme(val),
+        onMenuTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+          Navigator.pop(context);
+        },
       ),
-      body: Column(
-        children: [
-          Container(
-            color: const Color(0xFF2563EB),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              children: [
-                const Icon(Icons.timer, color: Colors.white, size: 20),
-                const SizedBox(height: 2),
-                StreamBuilder<int>(
-                  stream: Stream.periodic(const Duration(seconds: 1), (_) => stopwatch.elapsed.inSeconds),
-                  builder: (context, snapshot) {
-                    final t = snapshot.data ?? 0;
-                    return Text(
-                      formatTime(t),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+      appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : const Color(0xFF374151),
+        ),
+        title: Text(
+          widget.nomeTreino,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: isDark ? Colors.white : const Color(0xFF374151),
+            fontWeight: FontWeight.w700,
           ),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: exs.length,
-              itemBuilder: (context, idx) {
-                final ex = exs[idx];
-                final nome = (ex['nome_do_exercicio'] ?? '').toString().toUpperCase();
-                final img = ex['foto_gif'] ?? '';
-                final reps = ex['numero_repeticoes']?.toString() ?? '-';
-                final peso = ex['peso']?.toString() ?? '-';
-                final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
-                return Center(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 16),
-                        Container(
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.nightlight_round : Icons.nightlight_outlined,
+              color: isDark ? Colors.white : const Color(0xFF374151),
+            ),
+            onPressed: () => themeProvider.toggleTheme(),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark 
+              ? [const Color(0xFF111827), const Color(0xFF1F2937)]
+              : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          itemCount: exs.length,
+          itemBuilder: (context, idx) {
+            if (idx == 0) {
+              // Exercício ativo - Design futurista completamente novo
+              final ex = exs[0];
+              final nome = (ex['nome_do_exercicio'] ?? '').toString().toUpperCase();
+              final img = ex['foto_gif'] ?? '';
+              final reps = ex['numero_repeticoes']?.toString() ?? '-';
+              final peso = ex['peso']?.toString() ?? '-';
+              final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
+              
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: AnimatedBuilder(
+                    animation: _glowAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+                              blurRadius: isDark ? 30 : 20,
+                              offset: Offset(0, isDark ? 15 : 10),
+                            ),
+                          ],
+                        ),
+                        child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.06),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
+                            color: isDark ? Colors.transparent : Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            border: isDark ? null : Border.all(
+                              color: const Color(0xFF3B82F6).withOpacity(0.2),
+                              width: 1,
+                            ),
                           ),
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
+                          child: Stack(
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: img.isNotEmpty
-                                    ? Image.network('https://airfit.online/$img', width: 120, height: 120, fit: BoxFit.cover)
-                                    : const Icon(Icons.image, size: 100, color: Colors.grey),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(
-                                nome,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF2563EB),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _InfoBlock(
-                                    icon: Icons.repeat,
-                                    label: 'Séries',
-                                    value: '${serieAtual} / $totalSeries',
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _InfoBlock(
-                                    icon: Icons.cyclone,
-                                    label: 'Repetições',
-                                    value: reps,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _InfoBlock(
-                                    icon: Icons.fitness_center,
-                                    label: 'Peso',
-                                    value: '$peso kg',
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 18),
-                              // Progressão de séries
+                              // Conteúdo principal
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                child: _BarraProgressoSeries(
-                                  total: totalSeries,
-                                  atual: serieAtual,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(
-                                  exs.length,
-                                  (i) => Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: i == exercicioAtual ? const Color(0xFF2563EB) : Colors.grey[300],
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Column(
-                                children: [
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: descansando ? null : concluirSerie,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.black,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      ),
-                                      child: descansando
-                                          ? Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                const Icon(Icons.timer, size: 18, color: Colors.white),
-                                                const SizedBox(width: 8),
-                                                Text('Descansando... $tempoRestante s', style: const TextStyle(fontSize: 16)),
-                                              ],
-                                            )
-                                          : const Text('Concluir série'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: concluirExercicio,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.grey[300],
-                                        foregroundColor: Colors.black,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      ),
-                                      child: const Text('Concluir exercício'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: pularExercicio,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: Colors.black,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        side: const BorderSide(color: Color(0xFF2563EB)),
-                                      ),
-                                      child: const Text('Pular exercício'),
-                                    ),
-                                  ),
-                                ],
+                                padding: const EdgeInsets.all(28),
+                                                                 child: Column(
+                                   children: [
+                                     // Header com timer holográfico
+                                     _buildHolographicHeader(isDark),
+                                     const SizedBox(height: 24),
+                                     
+                                     // Layout com GIF como fundo suave
+                                     _buildGifBackgroundLayout(img, nome, reps, peso, totalSeries, isDark),
+                                     const SizedBox(height: 24),
+                                     
+                                     // Barra de progresso futurista
+                                     _buildFuturisticProgressBar(totalSeries, isDark),
+                                     const SizedBox(height: 28),
+                                     
+                                     // Divisor holográfico
+                                     if (isDark) _buildHolographicDivider(),
+                                     if (isDark) const SizedBox(height: 24),
+                                     
+                                     // Painel de controle futurista
+                                     _buildFuturisticControlPanel(isDark),
+                                   ],
+                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
+                ),
+              );
+            } else {
+              // Exercícios não ativos - Card menor e minimalista
+              final ex = exs[idx];
+              final nome = (ex['nome_do_exercicio'] ?? '').toString();
+              final img = ex['foto_gif'] ?? '';
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.transparent : const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: isDark ? null : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // GIF pausado à esquerda
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.transparent : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: img.isNotEmpty
+                                  ? Image.network(
+                                      'https://airfit.online/$img',
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      // Simula GIF pausado mostrando apenas o primeiro frame
+                                      gaplessPlayback: true,
+                                    )
+                                  : Icon(
+                                      Icons.image,
+                                      size: 32,
+                                      color: Colors.grey[500],
+                                    ),
+                            ),
+                            // Overlay indicando que está pausado
+                            Container(
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.transparent : Colors.black.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.pause,
+                                  color: isDark ? Colors.white : Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Nome do exercício no centro
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            nome,
+                            style: GoogleFonts.poppins(
+                              color: isDark ? Colors.white : const Color(0xFF2A2A2A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      
+                      // Botão de play à direita
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              final item = exs.removeAt(idx);
+                              exs.insert(0, item);
+                              exercicioAtual = 0;
+                              serieAtual = 1;
+                              descansando = false;
+                              tempoRestante = 0;
+                              timerDescanso?.cancel();
+                            });
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.transparent : const Color(0xFFCDFF47),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: isDark ? null : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.play_arrow,
+                              color: isDark ? Colors.white : Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            child: BottomNavigationBar(
+              backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+              elevation: 0,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
+              unselectedItemColor: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF9CA3AF),
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFamily: 'Poppins',
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                fontFamily: 'Poppins',
+              ),
+              showUnselectedLabels: true,
+              iconSize: 24,
+              items: [
+                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, isDark),
+                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, isDark),
+                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, isDark),
+                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, isDark),
+                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, isDark),
+              ],
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+                if (index != 2) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Novos widgets para o design futurista
+  Widget _buildHolographicHeader(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF374151) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'TREINO ATIVO',
+            style: GoogleFonts.poppins(
+              color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF3B82F6),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF059669).withOpacity(0.2) : Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF059669) : Colors.green,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              formatTime(stopwatch.elapsed.inSeconds),
+              style: GoogleFonts.poppins(
+                color: isDark ? const Color(0xFF10B981) : Colors.green,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
+
+     Widget _buildGifBackgroundLayout(String img, String nome, String reps, String peso, int totalSeries, bool isDark) {
+     return Container(
+       height: 180,
+                child: Container(
+           width: double.infinity,
+           height: 160,
+           decoration: BoxDecoration(
+             color: isDark ? Colors.transparent : Colors.white, // Fundo transparente no dark
+             borderRadius: BorderRadius.circular(20),
+             // Removendo boxShadow (bordas/sombras)
+           ),
+         child: Stack(
+           clipBehavior: Clip.none,
+           children: [
+             // GIF integrado no lado direito do mesmo card - altura aumentada em 30%
+             Positioned(
+               right: -20, // Movido de -40 para -20 (20px mais para a esquerda)
+               top: 0,
+               child: Container(
+                 width: 200,
+                 height: 208, // Aumentado de 160 para 208 (30% de aumento)
+                 child: ClipRRect(
+                   borderRadius: BorderRadius.circular(20), // Cantos arredondados completos
+                   child: img.isNotEmpty
+                       ? Image.network(
+                           'https://airfit.online/$img',
+                           fit: BoxFit.cover,
+                           width: 200,
+                           height: 208, // Aumentado de 160 para 208
+                         )
+                       : Container(
+                           color: Colors.white,
+                           child: Icon(
+                             Icons.image,
+                             size: 80,
+                             color: Colors.grey[400],
+                           ),
+                         ),
+                 ),
+               ),
+             ),
+             
+                          // Conteúdo principal (textos) posicionado mais à esquerda
+             Positioned(
+               left: 16,
+               top: 16,
+               bottom: 16,
+               right: 100, // Aumentado para dar mais espaço ao GIF
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                                       // Título melhorado - posicionado mais à esquerda
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                     child: Text(
+                       nome,
+                       style: GoogleFonts.poppins(
+                         color: isDark ? Colors.white : Colors.black,
+                         fontWeight: FontWeight.w700,
+                         fontSize: 16,
+                         letterSpacing: 0.3,
+                         height: 1.2,
+                         shadows: [
+                           Shadow(
+                             color: isDark 
+                                 ? Colors.black.withOpacity(0.5)
+                                 : Colors.white.withOpacity(0.3),
+                             blurRadius: 1,
+                             offset: const Offset(0.5, 0.5),
+                           ),
+                         ],
+                       ),
+                       maxLines: 2,
+                       overflow: TextOverflow.ellipsis,
+                     ),
+                   ),
+                  
+                  const Spacer(),
+                  
+                  // Estatísticas melhoradas e destacadas
+                  _buildEnhancedStats(reps, peso, totalSeries),
+                ],
+              ),
+            ),
+           ],
+         ),
+       ),
+     );
+   }
+
+
+
+   Widget _buildHorizontalGifLayout(String img, String nome, String reps, String peso, int totalSeries, bool isDark) {
+     return Container(
+       height: 180,
+       child: Stack(
+         children: [
+           // GIF como fundo
+           Container(
+             decoration: BoxDecoration(
+               color: const Color(0xFFE8E8E8), // Cinza claro como na imagem
+               borderRadius: BorderRadius.circular(24),
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.08),
+                   blurRadius: 16,
+                   offset: const Offset(0, 4),
+                 ),
+               ],
+             ),
+             child: ClipRRect(
+               borderRadius: BorderRadius.circular(24),
+               child: img.isNotEmpty
+                   ? Image.network(
+                       'https://airfit.online/$img',
+                       fit: BoxFit.cover,
+                       width: double.infinity,
+                       height: double.infinity,
+                     )
+                   : Container(
+                       width: double.infinity,
+                       height: double.infinity,
+                       decoration: BoxDecoration(
+                         color: const Color(0xFFE8E8E8),
+                         borderRadius: BorderRadius.circular(24),
+                       ),
+                       child: Icon(
+                         Icons.image,
+                         size: 60,
+                         color: Colors.grey[500],
+                       ),
+                     ),
+             ),
+           ),
+           
+           // Overlay suave para legibilidade
+           Container(
+             decoration: BoxDecoration(
+               gradient: LinearGradient(
+                 colors: [
+                   Colors.black.withValues(alpha: 0.4),
+                   Colors.black.withValues(alpha: 0.1),
+                   Colors.black.withValues(alpha: 0.5),
+                 ],
+                 begin: Alignment.topLeft,
+                 end: Alignment.bottomRight,
+               ),
+               borderRadius: BorderRadius.circular(24),
+             ),
+           ),
+           
+           // Textos sobrepostos
+           Positioned.fill(
+             child: Padding(
+               padding: const EdgeInsets.all(20),
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                 children: [
+                   // Título no topo
+                   Flexible(
+                     child: Text(
+                       nome,
+                       style: GoogleFonts.poppins(
+                         color: Colors.white,
+                         fontWeight: FontWeight.w600,
+                         fontSize: 18,
+                         letterSpacing: 0.3,
+                         shadows: [
+                           Shadow(
+                             color: Colors.black.withValues(alpha: 0.6),
+                             blurRadius: 3,
+                             offset: const Offset(0, 1),
+                           ),
+                         ],
+                       ),
+                       maxLines: 2,
+                       overflow: TextOverflow.ellipsis,
+                     ),
+                   ),
+                   
+                   // Estatísticas na parte inferior
+                   _buildCleanStats(reps, peso, totalSeries, isDark),
+                 ],
+               ),
+             ),
+           ),
+         ],
+       ),
+     );
+   }
+
+   Widget _buildCleanStats(String reps, String peso, int totalSeries, bool isDark) {
+     return Row(
+       children: [
+         // Estatística principal (Séries) - Verde limão
+         Expanded(
+           child: Container(
+             padding: const EdgeInsets.all(12),
+             decoration: BoxDecoration(
+               color: const Color(0xFFCDFF47), // Verde limão como na imagem
+               borderRadius: BorderRadius.circular(16),
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.1),
+                   blurRadius: 8,
+                   offset: const Offset(0, 2),
+                 ),
+               ],
+             ),
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Text(
+                   'Séries',
+                   style: GoogleFonts.poppins(
+                     color: Colors.black,
+                     fontSize: 11,
+                     fontWeight: FontWeight.w500,
+                   ),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+                 const SizedBox(height: 2),
+                 Text(
+                   '$serieAtual / $totalSeries',
+                   style: GoogleFonts.poppins(
+                     color: Colors.black,
+                     fontSize: 16,
+                     fontWeight: FontWeight.w700,
+                   ),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ],
+             ),
+           ),
+         ),
+         
+         const SizedBox(width: 8),
+         
+         // Estatística secundária (Repetições) - Preto
+         Expanded(
+           child: Container(
+             padding: const EdgeInsets.all(12),
+             decoration: BoxDecoration(
+               color: const Color(0xFF2A2A2A), // Preto como na imagem
+               borderRadius: BorderRadius.circular(16),
+               boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.1),
+                   blurRadius: 8,
+                   offset: const Offset(0, 2),
+                 ),
+               ],
+             ),
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Text(
+                   'Repetições',
+                   style: GoogleFonts.poppins(
+                     color: Colors.white,
+                     fontSize: 11,
+                     fontWeight: FontWeight.w500,
+                   ),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+                 const SizedBox(height: 2),
+                 Text(
+                   reps,
+                   style: GoogleFonts.poppins(
+                     color: Colors.white,
+                     fontSize: 16,
+                     fontWeight: FontWeight.w700,
+                   ),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ],
+             ),
+           ),
+         ),
+       ],
+     );
+   }
+
+   Widget _buildOverlayStats(String reps, String peso, int totalSeries, bool isDark) {
+     return Column(
+       mainAxisSize: MainAxisSize.min,
+       children: [
+         _buildOverlayStatRow(
+           Icons.repeat,
+           'Séries',
+           '$serieAtual / $totalSeries',
+           Colors.cyanAccent,
+           isDark,
+         ),
+         const SizedBox(height: 6),
+         _buildOverlayStatRow(
+           Icons.cached,
+           'Repetições',
+           reps,
+           Colors.blueAccent,
+           isDark,
+         ),
+         const SizedBox(height: 6),
+         _buildOverlayStatRow(
+           Icons.fitness_center,
+           'Peso',
+           '$peso kg',
+           Colors.purpleAccent,
+           isDark,
+         ),
+       ],
+     );
+   }
+
+   Widget _buildOverlayStatRow(IconData icon, String label, String value, Color color, bool isDark) {
+     return Row(
+       mainAxisSize: MainAxisSize.min,
+       children: [
+         Container(
+           padding: const EdgeInsets.all(4),
+           decoration: BoxDecoration(
+             color: color.withOpacity(0.3),
+             borderRadius: BorderRadius.circular(6),
+             border: Border.all(
+               color: color.withOpacity(0.6),
+               width: 1,
+             ),
+           ),
+           child: Icon(icon, size: 14, color: Colors.white),
+         ),
+         const SizedBox(width: 8),
+         Flexible(
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               Text(
+                 label,
+                 style: GoogleFonts.poppins(
+                   color: Colors.white.withOpacity(0.9),
+                   fontSize: 9,
+                   fontWeight: FontWeight.w500,
+                   letterSpacing: 0.3,
+                   shadows: [
+                     Shadow(
+                       color: Colors.black.withOpacity(0.8),
+                       blurRadius: 2,
+                       offset: const Offset(1, 1),
+                     ),
+                   ],
+                 ),
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
+               ),
+               Text(
+                 value,
+                 style: GoogleFonts.poppins(
+                   color: Colors.white,
+                   fontSize: 12,
+                   fontWeight: FontWeight.w600,
+                   shadows: [
+                     Shadow(
+                       color: Colors.black.withOpacity(0.8),
+                       blurRadius: 2,
+                       offset: const Offset(1, 1),
+                     ),
+                   ],
+                 ),
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
+               ),
+             ],
+           ),
+         ),
+       ],
+     );
+   }
+
+   Widget _buildCompactStats(String reps, String peso, int totalSeries, bool isDark) {
+     return Column(
+       children: [
+         _buildCompactStatRow(
+           Icons.repeat,
+           'Séries',
+           '$serieAtual / $totalSeries',
+           Colors.blueAccent,
+           isDark,
+         ),
+         const SizedBox(height: 8),
+         _buildCompactStatRow(
+           Icons.cached,
+           'Repetições',
+           reps,
+           Colors.cyanAccent,
+           isDark,
+         ),
+         const SizedBox(height: 8),
+         _buildCompactStatRow(
+           Icons.fitness_center,
+           'Peso',
+           '$peso kg',
+           Colors.purpleAccent,
+           isDark,
+         ),
+       ],
+     );
+   }
+
+   Widget _buildCompactStatRow(IconData icon, String label, String value, Color color, bool isDark) {
+     return Row(
+       children: [
+         Container(
+           padding: const EdgeInsets.all(6),
+           decoration: BoxDecoration(
+             color: isDark ? color.withOpacity(0.2) : color.withOpacity(0.1),
+             borderRadius: BorderRadius.circular(8),
+             border: isDark ? Border.all(
+               color: color.withOpacity(0.5),
+               width: 1,
+             ) : null,
+           ),
+           child: Icon(icon, size: 16, color: color),
+         ),
+         const SizedBox(width: 12),
+         Expanded(
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
+               Text(
+                 label,
+                 style: GoogleFonts.orbitron(
+                   color: isDark ? color.withOpacity(0.8) : const Color(0xFF64748B),
+                   fontSize: 10,
+                   fontWeight: FontWeight.bold,
+                   letterSpacing: 0.5,
+                 ),
+               ),
+               Text(
+                 value,
+                 style: GoogleFonts.orbitron(
+                   color: isDark ? Colors.white : const Color(0xFF1F2937),
+                   fontSize: 14,
+                   fontWeight: FontWeight.bold,
+                 ),
+               ),
+             ],
+           ),
+         ),
+       ],
+     );
+   }
+
+   Widget _buildFuturisticImageFrame(String img, bool isDark) {
+     return Container(
+       decoration: BoxDecoration(
+         borderRadius: BorderRadius.circular(20),
+         gradient: isDark ? LinearGradient(
+           colors: [
+             Colors.cyanAccent.withOpacity(0.3),
+             Colors.blueAccent.withOpacity(0.3),
+             Colors.purpleAccent.withOpacity(0.3),
+           ],
+           begin: Alignment.topLeft,
+           end: Alignment.bottomRight,
+         ) : null,
+         boxShadow: isDark ? [
+           BoxShadow(
+             color: Colors.cyanAccent.withOpacity(0.3),
+             blurRadius: 20,
+             spreadRadius: 2,
+           ),
+         ] : [
+           BoxShadow(
+             color: Colors.black.withOpacity(0.1),
+             blurRadius: 15,
+             offset: const Offset(0, 8),
+           ),
+         ],
+       ),
+       padding: const EdgeInsets.all(3),
+       child: ClipRRect(
+         borderRadius: BorderRadius.circular(17),
+         child: Container(
+           width: 140,
+           height: 140,
+           decoration: BoxDecoration(
+             color: isDark ? const Color(0xFF0F172A) : Colors.white,
+             borderRadius: BorderRadius.circular(17),
+           ),
+           child: ClipRRect(
+             borderRadius: BorderRadius.circular(17),
+             child: img.isNotEmpty
+                 ? Image.network('https://airfit.online/$img', fit: BoxFit.cover)
+                 : Icon(Icons.image, size: 80, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+           ),
+         ),
+       ),
+     );
+   }
+
+  Widget _buildNeonTitle(String nome, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: isDark ? BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.cyanAccent.withOpacity(0.1),
+            Colors.blueAccent.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.cyanAccent.withOpacity(0.3),
+          width: 1,
+        ),
+      ) : null,
+      child: Text(
+        nome,
+        textAlign: TextAlign.center,
+        style: isDark ? GoogleFonts.orbitron(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+          letterSpacing: 1.5,
+          shadows: [
+            Shadow(
+              color: Colors.cyanAccent.withOpacity(0.5),
+              blurRadius: 10,
+            ),
+          ],
+        ) : const TextStyle(
+          color: Color(0xFF2563EB),
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHolographicStatsPanel(String reps, String peso, int totalSeries, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: isDark ? LinearGradient(
+          colors: [
+            Colors.blueAccent.withOpacity(0.1),
+            Colors.cyanAccent.withOpacity(0.1),
+          ],
+        ) : null,
+        color: isDark ? null : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(
+          color: Colors.blueAccent.withOpacity(0.3),
+          width: 1,
+        ) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildHolographicStatItem(
+            Icons.repeat,
+            'SÉRIES',
+            '$serieAtual / $totalSeries',
+            Colors.blueAccent,
+            isDark,
+          ),
+          _buildVerticalDivider(isDark),
+          _buildHolographicStatItem(
+            Icons.cached,
+            'REPS',
+            reps,
+            Colors.cyanAccent,
+            isDark,
+          ),
+          _buildVerticalDivider(isDark),
+          _buildHolographicStatItem(
+            Icons.fitness_center,
+            'PESO',
+            '$peso kg',
+            Colors.purpleAccent,
+            isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHolographicStatItem(IconData icon, String label, String value, Color color, bool isDark) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark ? color.withOpacity(0.2) : color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: isDark ? Border.all(
+                color: color.withOpacity(0.5),
+                width: 1,
+              ) : null,
+            ),
+            child: Icon(icon, size: 24, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.orbitron(
+              color: isDark ? color : const Color(0xFF64748B),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.orbitron(
+              color: isDark ? Colors.white : const Color(0xFF1F2937),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider(bool isDark) {
+    return Container(
+      width: 1,
+      height: 40,
+      decoration: BoxDecoration(
+        gradient: isDark ? LinearGradient(
+          colors: [
+            Colors.transparent,
+            Colors.cyanAccent.withOpacity(0.5),
+            Colors.transparent,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ) : null,
+        color: isDark ? null : const Color(0xFFE5E7EB),
+      ),
+    );
+  }
+
+                          Widget _buildFuturisticProgressBar(int totalSeries, bool isDark) {
+     return Column(
+       children: [
+         Text(
+           'Progresso das Séries',
+           style: GoogleFonts.poppins(
+             color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+             fontSize: 12,
+             fontWeight: FontWeight.w500,
+           ),
+         ),
+         const SizedBox(height: 12),
+         AnimatedBuilder(
+           animation: _progressAnimation,
+           builder: (context, child) {
+             return Row(
+               children: List.generate(totalSeries, (i) {
+                 final isCompleted = i < serieAtual;
+                 return Expanded(
+                   child: Container(
+                     margin: EdgeInsets.only(right: i == totalSeries - 1 ? 0 : 6),
+                     height: 6,
+                     decoration: BoxDecoration(
+                       color: isCompleted 
+                           ? (isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47))
+                           : (isDark ? const Color(0xFF4B5563) : const Color(0xFFE8E8E8)),
+                       borderRadius: BorderRadius.circular(3),
+                     ),
+                   ),
+                 );
+               }),
+             );
+           },
+         ),
+       ],
+     );
+   }
+
+   Widget _buildEnhancedStats(String reps, String peso, int totalSeries) {
+     final isDark = Theme.of(context).brightness == Brightness.dark;
+     return Container(
+       padding: const EdgeInsets.all(12),
+       child: Column(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           // Séries com destaque - mais compacto
+           Row(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               Container(
+                 padding: const EdgeInsets.all(6),
+                 decoration: BoxDecoration(
+                   color: isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47),
+                   borderRadius: BorderRadius.circular(6),
+                 ),
+                 child: Icon(
+                   Icons.repeat,
+                   size: 14,
+                   color: isDark ? Colors.white : Colors.black,
+                 ),
+               ),
+               const SizedBox(width: 8),
+               Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 mainAxisSize: MainAxisSize.min,
+                 children: [
+                   Text(
+                     'Séries',
+                     style: GoogleFonts.poppins(
+                       color: isDark ? Colors.white : Colors.black,
+                       fontSize: 10,
+                       fontWeight: FontWeight.w500,
+                       shadows: [
+                         Shadow(
+                           color: isDark 
+                               ? Colors.black.withOpacity(0.5)
+                               : Colors.white.withOpacity(0.3),
+                           blurRadius: 1,
+                           offset: const Offset(0.5, 0.5),
+                         ),
+                       ],
+                     ),
+                   ),
+                   Text(
+                     '$serieAtual / $totalSeries',
+                     style: GoogleFonts.poppins(
+                       color: isDark ? Colors.white : Colors.black,
+                       fontSize: 14,
+                       fontWeight: FontWeight.w700,
+                       shadows: [
+                         Shadow(
+                           color: isDark 
+                               ? Colors.black.withOpacity(0.5)
+                               : Colors.white.withOpacity(0.3),
+                           blurRadius: 1,
+                           offset: const Offset(0.5, 0.5),
+                         ),
+                       ],
+                     ),
+                   ),
+                 ],
+               ),
+             ],
+           ),
+           
+           const SizedBox(height: 8),
+           
+           // Repetições e Peso lado a lado - mais compacto
+           Row(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               // Repetições
+               Row(
+                 mainAxisSize: MainAxisSize.min,
+                 children: [
+                   Container(
+                     padding: const EdgeInsets.all(6),
+                     decoration: BoxDecoration(
+                       color: isDark ? const Color(0xFF374151) : const Color(0xFF2A2A2A),
+                       borderRadius: BorderRadius.circular(6),
+                     ),
+                     child: Icon(
+                       Icons.cached,
+                       size: 14,
+                       color: Colors.white,
+                     ),
+                   ),
+                   const SizedBox(width: 6),
+                   Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     mainAxisSize: MainAxisSize.min,
+                     children: [
+                       Text(
+                         'Reps',
+                         style: GoogleFonts.poppins(
+                           color: isDark ? Colors.white : Colors.black,
+                           fontSize: 10,
+                           fontWeight: FontWeight.w500,
+                           shadows: [
+                             Shadow(
+                               color: isDark 
+                                   ? Colors.black.withOpacity(0.5)
+                                   : Colors.white.withOpacity(0.3),
+                               blurRadius: 1,
+                               offset: const Offset(0.5, 0.5),
+                             ),
+                           ],
+                         ),
+                       ),
+                       Text(
+                         reps,
+                         style: GoogleFonts.poppins(
+                           color: isDark ? Colors.white : Colors.black,
+                           fontSize: 12,
+                           fontWeight: FontWeight.w700,
+                           shadows: [
+                             Shadow(
+                               color: isDark 
+                                   ? Colors.black.withOpacity(0.5)
+                                   : Colors.white.withOpacity(0.3),
+                               blurRadius: 1,
+                               offset: const Offset(0.5, 0.5),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ],
+                   ),
+                 ],
+               ),
+               
+               const SizedBox(width: 12),
+               
+               // Peso
+               Row(
+                 mainAxisSize: MainAxisSize.min,
+                 children: [
+                   Container(
+                     padding: const EdgeInsets.all(6),
+                     decoration: BoxDecoration(
+                       color: isDark ? const Color(0xFF4B5563) : const Color(0xFFE8E8E8),
+                       borderRadius: BorderRadius.circular(6),
+                     ),
+                     child: Icon(
+                       Icons.fitness_center,
+                       size: 14,
+                       color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+                     ),
+                   ),
+                   const SizedBox(width: 6),
+                   Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     mainAxisSize: MainAxisSize.min,
+                     children: [
+                       Text(
+                         'Peso',
+                         style: GoogleFonts.poppins(
+                           color: isDark ? Colors.white : Colors.black,
+                           fontSize: 10,
+                           fontWeight: FontWeight.w500,
+                           shadows: [
+                             Shadow(
+                               color: isDark 
+                                   ? Colors.black.withOpacity(0.5)
+                                   : Colors.white.withOpacity(0.3),
+                               blurRadius: 1,
+                               offset: const Offset(0.5, 0.5),
+                             ),
+                           ],
+                         ),
+                       ),
+                       Text(
+                         '${peso}kg',
+                         style: GoogleFonts.poppins(
+                           color: isDark ? Colors.white : Colors.black,
+                           fontSize: 12,
+                           fontWeight: FontWeight.w700,
+                           shadows: [
+                             Shadow(
+                               color: isDark 
+                                   ? Colors.black.withOpacity(0.5)
+                                   : Colors.white.withOpacity(0.3),
+                               blurRadius: 1,
+                               offset: const Offset(0.5, 0.5),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ],
+                   ),
+                 ],
+               ),
+             ],
+           ),
+         ],
+       ),
+     );
+   }
+
+  Widget _buildHolographicDivider() {
+    return Container(
+      height: 1,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.transparent,
+            Colors.cyanAccent.withOpacity(0.5),
+            Colors.blueAccent.withOpacity(0.5),
+            Colors.transparent,
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+    );
+  }
+
+     Widget _buildFuturisticControlPanel(bool isDark) {
+     return Column(
+       children: [
+         // Layout principal com botão circular no centro
+         Row(
+           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+           children: [
+             // Botão esquerdo - Concluir exercício
+             _buildSideButton(
+               text: 'CONCLUIR\nEXERCÍCIO',
+               onPressed: concluirExercicio,
+               icon: Icons.done_all,
+               isDark: isDark,
+             ),
+             
+             // Botão central circular - Ação principal
+             _buildCentralButton(
+               onPressed: descansando ? null : concluirSerie,
+               isResting: descansando,
+               restTime: tempoRestante,
+               isDark: isDark,
+             ),
+             
+             // Botão direito - Pular exercício
+             _buildSideButton(
+               text: 'PULAR\nEXERCÍCIO',
+               onPressed: pularExercicio,
+               icon: Icons.skip_next,
+               isDark: isDark,
+             ),
+           ],
+         ),
+       ],
+     );
+   }
+
+   Widget _buildCentralButton({
+     required VoidCallback? onPressed,
+     required bool isResting,
+     required int restTime,
+     required bool isDark,
+   }) {
+     return GestureDetector(
+       onTap: onPressed,
+       child: Container(
+         width: 64,
+         height: 64,
+         decoration: BoxDecoration(
+           color: onPressed != null 
+               ? (isDark ? const Color(0xFF10B981) : const Color(0xFFCDFF47))
+               : (isDark ? const Color(0xFF4B5563) : const Color(0xFFCCCCCC)),
+           shape: BoxShape.circle,
+           boxShadow: onPressed != null ? [
+             BoxShadow(
+               color: Colors.black.withOpacity(isDark ? 0.2 : 0.1),
+               blurRadius: 8,
+               offset: const Offset(0, 3),
+             ),
+           ] : null,
+         ),
+         child: Center(
+           child: isResting
+               ? Column(
+                   mainAxisAlignment: MainAxisAlignment.center,
+                   children: [
+                     Icon(
+                       Icons.pause,
+                       color: isDark ? Colors.white : Colors.black,
+                       size: 18,
+                     ),
+                     Text(
+                       '${restTime}s',
+                       style: GoogleFonts.poppins(
+                         color: isDark ? Colors.white : Colors.black,
+                         fontSize: 8,
+                         fontWeight: FontWeight.w500,
+                       ),
+                     ),
+                   ],
+                 )
+               : Icon(
+                   Icons.play_arrow,
+                   color: onPressed != null 
+                       ? (isDark ? Colors.white : Colors.black)
+                       : (isDark ? const Color(0xFF6B7280) : Colors.grey[600]),
+                   size: 24,
+                 ),
+         ),
+       ),
+     );
+   }
+
+   Widget _buildSideButton({
+     required String text,
+     required VoidCallback onPressed,
+     required IconData icon,
+     required bool isDark,
+   }) {
+     return GestureDetector(
+       onTap: onPressed,
+       child: Container(
+         width: 64,
+         height: 64,
+         decoration: BoxDecoration(
+           color: isDark ? const Color(0xFF374151) : const Color(0xFFF8F8F8),
+           borderRadius: BorderRadius.circular(12),
+           boxShadow: [
+             BoxShadow(
+               color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+               blurRadius: 6,
+               offset: const Offset(0, 2),
+             ),
+           ],
+         ),
+         child: Column(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+             Icon(
+               icon,
+               color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+               size: 18,
+             ),
+             const SizedBox(height: 3),
+             Text(
+               text,
+               textAlign: TextAlign.center,
+               style: GoogleFonts.poppins(
+                 color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF666666),
+                 fontSize: 8,
+                 fontWeight: FontWeight.w500,
+                 height: 1.1,
+               ),
+             ),
+           ],
+         ),
+       ),
+     );
+   }
+
+     Widget _buildQuantumButton({
+     required String text,
+     required VoidCallback? onPressed,
+     required bool isPrimary,
+     required IconData icon,
+     required bool isDark,
+   }) {
+     return GestureDetector(
+       onTapDown: onPressed != null ? (_) => _buttonController.forward() : null,
+       onTapUp: onPressed != null ? (_) => _buttonController.reverse() : null,
+       onTapCancel: onPressed != null ? () => _buttonController.reverse() : null,
+       onTap: onPressed,
+       child: AnimatedBuilder(
+         animation: _buttonAnimation,
+         builder: (context, child) {
+           return Transform.scale(
+             scale: onPressed != null ? _buttonAnimation.value : 1.0,
+             child: Container(
+               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+               decoration: BoxDecoration(
+                 color: onPressed != null
+                     ? (isPrimary
+                         ? const Color(0xFFCDFF47) // Verde limão para botão principal
+                         : const Color(0xFFE8E8E8)) // Cinza claro para botões secundários
+                     : const Color(0xFFCCCCCC), // Cinza para desabilitado
+                 borderRadius: BorderRadius.circular(16),
+                 boxShadow: onPressed != null ? [
+                   BoxShadow(
+                     color: Colors.black.withOpacity(0.1),
+                     blurRadius: 8,
+                     offset: const Offset(0, 2),
+                   ),
+                 ] : null,
+               ),
+               child: Row(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   Icon(
+                     icon,
+                     size: 18,
+                     color: onPressed != null
+                         ? (isPrimary 
+                             ? Colors.black // Preto no botão verde
+                             : const Color(0xFF666666)) // Cinza escuro nos secundários
+                         : Colors.grey[500],
+                   ),
+                   const SizedBox(width: 8),
+                   Text(
+                     text,
+                     style: GoogleFonts.poppins(
+                       color: onPressed != null
+                           ? (isPrimary 
+                               ? Colors.black // Preto no botão verde
+                               : const Color(0xFF666666)) // Cinza escuro nos secundários
+                           : Colors.grey[500],
+                       fontSize: 14,
+                       fontWeight: FontWeight.w600,
+                       letterSpacing: 0.3,
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+           );
+         },
+       ),
+     );
+   }
+
+  BottomNavigationBarItem _navBarItem(IconData icon, String label, int index, int selectedIndex, bool isDark) {
+    final bool isSelected = index == selectedIndex;
+    return BottomNavigationBarItem(
+      icon: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withOpacity(0.1) 
+            : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 24,
+          color: isSelected 
+            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6))
+            : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF9CA3AF)),
+        ),
+      ),
+      label: label,
+    );
+  }
+} 
 
 class _InfoBlock extends StatelessWidget {
   final IconData icon;
@@ -795,6 +2155,133 @@ class _BarraProgressoSeries extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+} 
+
+class _FuturisticInfoBlock extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isDark;
+  const _FuturisticInfoBlock({required this.icon, required this.label, required this.value, required this.isDark});
+  @override
+  Widget build(BuildContext context) {
+    return Flexible(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF16213E) : const Color(0xFFF4F7FE),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? Colors.cyanAccent : const Color(0xFF2563EB),
+            width: 1.5,
+          ),
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.blueAccent.withOpacity(0.18),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 22, color: isDark ? Colors.cyanAccent : const Color(0xFF2563EB)),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.white : const Color(0xFF2563EB))),
+            const SizedBox(height: 2),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : const Color(0xFF2563EB))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FuturisticButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  final bool isMain;
+  final bool isDark;
+  final IconData? icon;
+  const _FuturisticButton({required this.text, this.onPressed, required this.isMain, required this.isDark, this.icon});
+  @override
+  Widget build(BuildContext context) {
+    if (!isDark) {
+      return ElevatedButton(
+        onPressed: onPressed,
+        child: icon != null ? Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(text)],
+        ) : Text(text),
+      );
+    }
+    if (isMain) {
+      // Botão com gradiente
+      return GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.blueAccent, Colors.cyanAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueAccent.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Center(
+            child: icon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 18, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(text, style: GoogleFonts.orbitron(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        fontSize: 16,
+                      )),
+                    ],
+                  )
+                : Text(text, style: GoogleFonts.orbitron(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                    fontSize: 16,
+                  )),
+          ),
+        ),
+      );
+    }
+    // Botão secundário
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF0D1B2A),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 0,
+        shadowColor: Colors.blueAccent.withOpacity(0.4),
+        textStyle: GoogleFonts.orbitron(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+      ),
+      child: icon != null ? Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [Icon(icon, size: 18, color: Colors.cyanAccent), const SizedBox(width: 8), Text(text)],
+      ) : Text(text),
     );
   }
 } 
