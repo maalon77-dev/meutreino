@@ -459,24 +459,27 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   bool descansando = false;
   int tempoRestante = 0;
   Timer? timerDescanso;
+  Timer? timerCronometro;
+  int tempoTotalTreino = 0;
   int _selectedIndex = 2; // Treinar
   
   // Controladores de animação
   late AnimationController _glowController;
   late AnimationController _buttonController;
   late AnimationController _progressController;
+  late AnimationController _fadeController;
   late Animation<double> _glowAnimation;
   late Animation<double> _buttonAnimation;
   late Animation<double> _progressAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     
-    // Verificar se todos os exercícios estão concluídos e resetar se necessário
-    _verificarEResetarExercicios();
+    // Inicializar de forma assíncrona
+    _inicializarTreino();
     
-    stopwatch = Stopwatch()..start();
     _pageController = PageController(initialPage: 0);
     
     // Inicializar animações
@@ -495,6 +498,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       vsync: this,
     );
     
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    
     _glowAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
@@ -507,7 +515,46 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
     );
     
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    
     _progressController.forward();
+    _fadeController.forward();
+    
+    // Inicializar timer para atualizar o cronômetro
+    timerCronometro = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      final tempoAtual = await _obterTempoTotalTreino();
+      setState(() {
+        tempoTotalTreino = tempoAtual;
+      });
+      
+      // Verificar timeout de 5 horas
+      if (tempoAtual >= 5 * 60 * 60) { // 5 horas em segundos
+        print('Timeout de 5 horas atingido - resetando cronômetro');
+        timer.cancel();
+        await _limparCronometroPersistente();
+        stopwatch.reset();
+        stopwatch.start();
+        await _salvarInicioTreino();
+        setState(() {
+          tempoTotalTreino = 0;
+        });
+        
+        // Reiniciar o timer após timeout
+        timerCronometro = Timer.periodic(const Duration(seconds: 1), (newTimer) async {
+          final novoTempoAtual = await _obterTempoTotalTreino();
+          setState(() {
+            tempoTotalTreino = novoTempoAtual;
+          });
+          print('Cronômetro reiniciado: ${formatTime(novoTempoAtual)}');
+        });
+        
+        return; // Sair da função atual
+      }
+      
+      print('Cronômetro atualizado: ${formatTime(tempoAtual)}');
+    });
   }
 
   @override
@@ -515,9 +562,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     stopwatch.stop();
     _pageController.dispose();
     timerDescanso?.cancel();
+    timerCronometro?.cancel();
     _glowController.dispose();
     _buttonController.dispose();
     _progressController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -532,6 +581,63 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       });
       _pageController.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
     }
+  }
+
+  Future<void> _trocarExercicioComFade() async {
+    // Fade out
+    await _fadeController.reverse();
+    
+    // Lógica para avançar exercício
+    if (exercicioAtual < widget.exercicios.length - 1) {
+      setState(() {
+        exercicioAtual++;
+        serieAtual = 1;
+        descansando = false;
+        tempoRestante = 0;
+        timerDescanso?.cancel();
+      });
+    }
+    
+    // Fade in
+    await _fadeController.forward();
+  }
+
+  Future<void> _pularExercicioComFade() async {
+    // Fade out
+    await _fadeController.reverse();
+    
+    setState(() {
+      // Move o exercício atual (posição 0) para o final da lista de não concluídos
+      final exercicioPulado = widget.exercicios.removeAt(0);
+      
+      // Encontrar a posição onde inserir (antes dos concluídos)
+      int posicaoInsercao = widget.exercicios.length;
+      for (int i = 0; i < widget.exercicios.length; i++) {
+        if (widget.exercicios[i]['concluido'] == true) {
+          posicaoInsercao = i;
+          break;
+        }
+      }
+      
+      // Inserir o exercício pulado antes dos concluídos
+      widget.exercicios.insert(posicaoInsercao, exercicioPulado);
+      
+      // Reorganizar a lista mantendo concluídos sempre no final
+      _reorganizarLista();
+      
+      // Resetar variáveis do treino - o próximo exercício não concluído se torna o principal
+      exercicioAtual = 0;
+      serieAtual = 1;
+      descansando = false;
+      tempoRestante = 0;
+      timerDescanso?.cancel();
+    });
+    
+    // Salvar o estado atualizado dos exercícios
+    await _salvarEstadoExercicios();
+    
+    // Fade in
+    await _fadeController.forward();
   }
 
   void iniciarDescanso(int segundos) {
@@ -577,17 +683,23 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   }
 
   void pularExercicio() {
-    avancarExercicio();
+    _pularExercicioComFade();
   }
 
   void concluirExercicio() {
+    _concluirExercicioComFade();
+  }
+
+  Future<void> _concluirExercicioComFade() async {
+    // Fade out
+    await _fadeController.reverse();
+    
     setState(() {
       // Marcar o exercício atual como concluído
       widget.exercicios[0]['concluido'] = true;
       
-      // Mover o exercício concluído para o final da lista
-      final exercicioConcluido = widget.exercicios.removeAt(0);
-      widget.exercicios.add(exercicioConcluido);
+      // Reorganizar a lista mantendo concluídos sempre no final
+      _reorganizarLista();
       
       // Resetar variáveis do treino
       exercicioAtual = 0;
@@ -597,27 +709,202 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       timerDescanso?.cancel();
     });
     
+    // Salvar o estado atualizado dos exercícios
+    await _salvarEstadoExercicios();
+    
+    // Fade in
+    await _fadeController.forward();
+    
     // Verificar se todos os exercícios foram concluídos
-    _verificarConclusaoTreino();
+    await _verificarConclusaoTreino();
   }
 
-  void _verificarEResetarExercicios() {
+  Future<void> _trocarParaExercicioComFade(int idx) async {
+    // Verificar se o exercício está concluído - se estiver, não permitir seleção
+    if (widget.exercicios[idx]['concluido'] == true) {
+      return; // Não fazer nada se o exercício já foi concluído
+    }
+    
+    // Fade out
+    await _fadeController.reverse();
+    
+    setState(() {
+      final item = widget.exercicios.removeAt(idx);
+      widget.exercicios.insert(0, item);
+      
+      // Reorganizar a lista mantendo concluídos sempre no final
+      _reorganizarLista();
+      
+      exercicioAtual = 0;
+      serieAtual = 1;
+      descansando = false;
+      tempoRestante = 0;
+      timerDescanso?.cancel();
+    });
+    
+    // Salvar o estado atualizado dos exercícios
+    await _salvarEstadoExercicios();
+    
+    // Fade in
+    await _fadeController.forward();
+  }
+
+  Future<void> _inicializarCronometroPersistente() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tempoInicioSalvo = prefs.getInt('treino_inicio_timestamp');
+    final nomeTreinoSalvo = prefs.getString('treino_nome_ativo');
+    
+    if (tempoInicioSalvo != null && nomeTreinoSalvo == widget.nomeTreino) {
+      // Verificar se passou mais de 5 horas (5 * 60 * 60 * 1000 = 18000000 ms)
+      final agora = DateTime.now().millisecondsSinceEpoch;
+      final tempoDecorrido = agora - tempoInicioSalvo;
+      final cincoHoras = 5 * 60 * 60 * 1000; // 5 horas em milliseconds
+      
+      if (tempoDecorrido >= cincoHoras) {
+        // Timeout de 5 horas - resetar cronômetro
+        print('Timeout de 5 horas atingido - resetando cronômetro');
+        await _limparCronometroPersistente();
+        stopwatch = Stopwatch()..start();
+        await _salvarInicioTreino();
+      } else {
+        // Cronômetro continua do ponto onde parou
+        stopwatch = Stopwatch()..start();
+        print('Cronômetro restaurado: ${tempoDecorrido ~/ 1000}s já decorridos');
+      }
+    } else {
+      // Primeiro treino ou treino diferente - iniciar novo cronômetro
+      stopwatch = Stopwatch()..start();
+      await _salvarInicioTreino();
+      print('Novo cronômetro iniciado');
+    }
+    
+    // Inicializar o tempo total do treino
+    tempoTotalTreino = await _obterTempoTotalTreino();
+  }
+
+  Future<void> _salvarInicioTreino() async {
+    final prefs = await SharedPreferences.getInstance();
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setInt('treino_inicio_timestamp', agora);
+    await prefs.setString('treino_nome_ativo', widget.nomeTreino);
+    print('Início do treino salvo: ${DateTime.now()}');
+  }
+
+  Future<void> _salvarEstadoExercicios() async {
+    final prefs = await SharedPreferences.getInstance();
+    final estadoExercicios = widget.exercicios.map((exercicio) {
+      return {
+        'nome': exercicio['nome_do_exercicio'],
+        'concluido': exercicio['concluido'] ?? false,
+      };
+    }).toList();
+    
+    final estadoJson = jsonEncode(estadoExercicios);
+    await prefs.setString('estado_exercicios_${widget.nomeTreino}', estadoJson);
+    print('Estado dos exercícios salvo: ${estadoExercicios.length} exercícios');
+  }
+
+  Future<void> _restaurarEstadoExercicios() async {
+    final prefs = await SharedPreferences.getInstance();
+    final estadoSalvo = prefs.getString('estado_exercicios_${widget.nomeTreino}');
+    
+    if (estadoSalvo != null) {
+      try {
+        final List<dynamic> estadoExercicios = jsonDecode(estadoSalvo);
+        
+        // Aplicar o estado salvo aos exercícios
+        for (var exercicio in widget.exercicios) {
+          final estadoSalvoExercicio = estadoExercicios.firstWhere(
+            (e) => e['nome'] == exercicio['nome_do_exercicio'],
+            orElse: () => null,
+          );
+          
+          if (estadoSalvoExercicio != null) {
+            exercicio['concluido'] = estadoSalvoExercicio['concluido'];
+          }
+        }
+        
+        print('Estado dos exercícios restaurado: ${estadoExercicios.length} exercícios');
+      } catch (e) {
+        print('Erro ao restaurar estado dos exercícios: $e');
+      }
+    }
+  }
+
+  Future<void> _limparCronometroPersistente() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('treino_inicio_timestamp');
+    await prefs.remove('treino_nome_ativo');
+    await prefs.remove('estado_exercicios_${widget.nomeTreino}');
+    print('Cronômetro persistente e estado dos exercícios limpos');
+  }
+
+  Future<void> _inicializarTreino() async {
+    // 1. Primeiro restaurar o estado dos exercícios
+    await _restaurarEstadoExercicios();
+    
+    // 2. Verificar se todos os exercícios estão concluídos e resetar se necessário
+    await _verificarEResetarExercicios();
+    
+    // 3. Inicializar cronômetro persistente
+    await _inicializarCronometroPersistente();
+    
+    print('Treino inicializado com estado restaurado');
+  }
+
+  void _reorganizarLista() {
+    // Separar exercícios não concluídos dos concluídos
+    final List<Map<String, dynamic>> naoConcluidos = [];
+    final List<Map<String, dynamic>> concluidos = [];
+    
+    for (var exercicio in widget.exercicios) {
+      if (exercicio['concluido'] == true) {
+        concluidos.add(exercicio);
+      } else {
+        naoConcluidos.add(exercicio);
+      }
+    }
+    
+    // Recompor a lista: não concluídos primeiro, concluídos depois
+    widget.exercicios.clear();
+    widget.exercicios.addAll(naoConcluidos);
+    widget.exercicios.addAll(concluidos);
+    
+    print('Lista reorganizada: ${naoConcluidos.length} não concluídos, ${concluidos.length} concluídos');
+  }
+
+  Future<void> _verificarEResetarExercicios() async {
     final todosExerciciosConcluidos = widget.exercicios.every((ex) => ex['concluido'] == true);
     if (todosExerciciosConcluidos) {
       // Se todos estão concluídos, resetar todos os exercícios para disponíveis
       for (var exercicio in widget.exercicios) {
         exercicio['concluido'] = false;
       }
+      
+      // Reorganizar a lista mantendo concluídos sempre no final
+      _reorganizarLista();
+      
+      // Salvar o estado resetado
+      await _salvarEstadoExercicios();
+      
       print('Todos os exercícios foram resetados - treino reiniciado');
+    } else {
+      // Se nem todos estão concluídos, manter o estado atual
+      // Apenas reorganizar para garantir que concluídos fiquem no final
+      _reorganizarLista();
+      print('Exercícios mantidos no estado atual - alguns ainda pendentes');
     }
   }
 
-  void _resetarTodosExercicios() {
+  Future<void> _resetarTodosExercicios() async {
     setState(() {
       // Resetar todos os exercícios
       for (var exercicio in widget.exercicios) {
         exercicio['concluido'] = false;
       }
+      
+      // Reorganizar a lista mantendo concluídos sempre no final
+      _reorganizarLista();
       
       // Resetar variáveis do treino
       exercicioAtual = 0;
@@ -626,24 +913,32 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       tempoRestante = 0;
       timerDescanso?.cancel();
       
-      // Reiniciar cronômetro
+      // Reiniciar cronômetro persistente
       stopwatch.reset();
       stopwatch.start();
     });
     
+    // Reiniciar cronômetro persistente
+    await _limparCronometroPersistente();
+    await _salvarInicioTreino();
+    
+    // Salvar o estado resetado dos exercícios
+    await _salvarEstadoExercicios();
+    
     print('Treino resetado - todos os exercícios disponíveis novamente');
   }
 
-  void _verificarConclusaoTreino() {
+  Future<void> _verificarConclusaoTreino() async {
     final todosExerciciosConcluidos = widget.exercicios.every((ex) => ex['concluido'] == true);
     if (todosExerciciosConcluidos) {
       stopwatch.stop();
-      _mostrarPopupConclusao();
+      timerCronometro?.cancel(); // Parar o timer quando concluir
+      await _mostrarPopupConclusao();
     }
   }
 
-  void _mostrarPopupConclusao() {
-    final tempoTotal = stopwatch.elapsed.inSeconds;
+  Future<void> _mostrarPopupConclusao() async {
+    final tempoTotal = await _obterTempoTotalTreino();
     final TextEditingController kmController = TextEditingController();
     
     showDialog(
@@ -747,6 +1042,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           try {
             final responseData = jsonDecode(response.body);
             if (responseData['sucesso'] == true) {
+              // Limpar cronômetro persistente e estado dos exercícios após salvar com sucesso
+              await _limparCronometroPersistente();
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Treino salvo com sucesso!'),
@@ -781,6 +1079,20 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     final min = (seconds ~/ 60).toString().padLeft(2, '0');
     final sec = (seconds % 60).toString().padLeft(2, '0');
     return '00 : $min : $sec';
+  }
+
+  Future<int> _obterTempoTotalTreino() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tempoInicioSalvo = prefs.getInt('treino_inicio_timestamp');
+    final nomeTreinoSalvo = prefs.getString('treino_nome_ativo');
+    
+    if (tempoInicioSalvo != null && nomeTreinoSalvo == widget.nomeTreino) {
+      final agora = DateTime.now().millisecondsSinceEpoch;
+      final tempoDecorrido = agora - tempoInicioSalvo;
+      return tempoDecorrido ~/ 1000; // Converter para segundos
+    } else {
+      return stopwatch.elapsed.inSeconds;
+    }
   }
 
   @override
@@ -834,7 +1146,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           ),
         ),
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.only(top: 16, bottom: 100),
           itemCount: exs.length,
           itemBuilder: (context, idx) {
             if (idx == 0) {
@@ -849,23 +1161,25 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
                   child: AnimatedBuilder(
                     animation: _glowAnimation,
                     builder: (context, child) {
                       return Container(
                         constraints: const BoxConstraints(maxWidth: 400),
-                        decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.08),
                               blurRadius: 20,
-                              offset: Offset(0, 10),
+                                offset: Offset(0, 10),
                             ),
                           ],
                         ),
                         child: Container(
-                          decoration: BoxDecoration(
+                            decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
@@ -880,20 +1194,20 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                                 padding: const EdgeInsets.all(28),
                                                                  child: Column(
                                    children: [
-                                                                      // Header com timer
-                                 _buildHolographicHeader(false),
-                                 const SizedBox(height: 24),
-                                 
-                                 // Layout com GIF como fundo suave
-                                 _buildGifBackgroundLayout(img, nome, reps, peso, totalSeries, false),
-                                 const SizedBox(height: 24),
-                                 
-                                 // Barra de progresso
-                                 _buildFuturisticProgressBar(totalSeries, false),
-                                 const SizedBox(height: 28),
-                                 
-                                 // Painel de controle
-                                 _buildFuturisticControlPanel(false),
+                                                                        // Header com timer
+                                   _buildHolographicHeader(false),
+                                     const SizedBox(height: 24),
+                                     
+                                     // Layout com GIF como fundo suave
+                                   _buildGifBackgroundLayout(img, nome, reps, peso, totalSeries, false),
+                                     const SizedBox(height: 24),
+                                     
+                                   // Barra de progresso
+                                   _buildFuturisticProgressBar(totalSeries, false),
+                                     const SizedBox(height: 28),
+                                     
+                                   // Painel de controle
+                                   _buildFuturisticControlPanel(false),
                                    ],
                                  ),
                               ),
@@ -902,6 +1216,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                         ),
                       );
                     },
+                    ),
                   ),
                 ),
               );
@@ -961,21 +1276,18 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                                       color: Colors.grey[500],
                                     ),
                             ),
-                            // Overlay indicando estado do exercício
+                            // Overlay indicando estado do exercício apenas para concluídos
+                            if (isConcluido)
                             Container(
                               decoration: BoxDecoration(
-                                color: isConcluido 
-                                    ? const Color(0xFF4CAF50).withOpacity(0.8)
-                                    : Colors.black.withOpacity(0.3),
-                                borderRadius: BorderRadius.circular(12),
+                                  color: const Color(0xFF4CAF50).withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Center(
+                                child: Center(
                                 child: Icon(
-                                  isConcluido 
-                                      ? Icons.check_circle
-                                      : Icons.pause,
+                                    Icons.check_circle,
                                   color: Colors.white,
-                                  size: 20,
+                                    size: 20,
                                 ),
                               ),
                             ),
@@ -987,21 +1299,21 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                       
                       // Nome do exercício no centro
                       Expanded(
-                        child: Text(
-                          nome,
-                          style: GoogleFonts.poppins(
+                          child: Text(
+                            nome,
+                            style: GoogleFonts.poppins(
                             color: isConcluido 
                                 ? const Color(0xFF4CAF50)
                                 : const Color(0xFF2A2A2A),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
                             decoration: isConcluido 
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
-                          ),
+                            ),
                           maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
+                            overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       
@@ -1030,38 +1342,30 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                               ),
                             )
                           : GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  final item = exs.removeAt(idx);
-                                  exs.insert(0, item);
-                                  exercicioAtual = 0;
-                                  serieAtual = 1;
-                                  descansando = false;
-                                  tempoRestante = 0;
-                                  timerDescanso?.cancel();
-                                });
-                              },
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFCDFF47),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                          onTap: () {
+                            _trocarParaExercicioComFade(idx);
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFCDFF47),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
-                                child: Icon(
-                                  Icons.play_arrow,
-                                  color: Colors.black,
-                                  size: 24,
-                                ),
-                              ),
+                              ],
                             ),
+                                child: Icon(
+                              Icons.play_arrow,
+                              color: Colors.black,
+                              size: 24,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1167,7 +1471,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               ),
             ),
             child: Text(
-              formatTime(stopwatch.elapsed.inSeconds),
+              formatTime(tempoTotalTreino),
               style: GoogleFonts.poppins(
                 color: Colors.green,
                 fontSize: 14,
@@ -1183,14 +1487,14 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
      Widget _buildGifBackgroundLayout(String img, String nome, String reps, String peso, int totalSeries, bool isDark) {
      return Container(
        height: 200,
-                child: Container(
-           width: double.infinity,
+       child: Container(
+         width: double.infinity,
            height: 180,
-           decoration: BoxDecoration(
+         decoration: BoxDecoration(
              color: Colors.white, // Fundo branco
-             borderRadius: BorderRadius.circular(20),
-             // Removendo boxShadow (bordas/sombras)
-           ),
+           borderRadius: BorderRadius.circular(20),
+           // Removendo boxShadow (bordas/sombras)
+         ),
          child: Stack(
            clipBehavior: Clip.none,
            children: [
@@ -1247,21 +1551,21 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                              color: Colors.white.withOpacity(0.3),
                              blurRadius: 1,
                              offset: const Offset(0.5, 0.5),
-                           ),
+                       ),
                          ],
                        ),
                        maxLines: 3,
                        overflow: TextOverflow.ellipsis,
                      ),
                    ),
-                  
-                  const Spacer(),
-                  
-                  // Estatísticas melhoradas e destacadas
-                  _buildEnhancedStats(reps, peso, totalSeries),
-                ],
-              ),
-            ),
+                   
+                   const Spacer(),
+                   
+                   // Estatísticas melhoradas e destacadas
+                   _buildEnhancedStats(reps, peso, totalSeries),
+                 ],
+               ),
+             ),
            ],
          ),
        ),
@@ -1832,7 +2136,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     );
   }
 
-                          Widget _buildFuturisticProgressBar(int totalSeries, bool isDark) {
+     Widget _buildFuturisticProgressBar(int totalSeries, bool isDark) {
      return Column(
        children: [
          Text(
