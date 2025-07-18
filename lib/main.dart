@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'home_page.dart';
 import 'login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'theme_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,16 +19,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
-          return MaterialApp(
-            title: 'UPMAX Fitness',
-            debugShowCheckedModeBanner: false,
-            theme: _buildLightTheme(),
-            darkTheme: _buildDarkTheme(),
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+    return MaterialApp(
+      title: 'UPMAX Fitness',
+      debugShowCheckedModeBanner: false,
+      theme: _buildLightTheme(),
             home: FutureBuilder<bool>(
               future: _isLoggedIn(),
               builder: (context, snapshot) {
@@ -47,9 +39,6 @@ class MyApp extends StatelessWidget {
               },
             ),
           );
-        },
-      ),
-    );
   }
 
   ThemeData _buildLightTheme() {
@@ -271,226 +260,7 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  ThemeData _buildDarkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      fontFamily: GoogleFonts.poppins().fontFamily,
-      brightness: Brightness.dark,
-      
-      // Cores principais - Tema escuro com azuis variados
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1E3A8A), // Azul escuro como base
-        brightness: Brightness.dark,
-      ).copyWith(
-        primary: const Color(0xFF1E3A8A), // Azul escuro
-        secondary: const Color(0xFF3B82F6), // Azul médio
-        tertiary: const Color(0xFF60A5FA), // Azul claro
-        surface: const Color(0xFF0F172A), // Azul muito escuro
-        background: const Color(0xFF020617), // Azul quase preto
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: Colors.white,
-        onBackground: Colors.white,
-        surfaceVariant: const Color(0xFF1E293B), // Azul escuro variante
-        onSurfaceVariant: const Color(0xFF94A3B8), // Azul claro para texto
-      ),
-      
-      // AppBar escuro
-      appBarTheme: AppBarTheme(
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        backgroundColor: const Color(0xFF0F172A), // Azul muito escuro
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        titleTextStyle: GoogleFonts.poppins(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-          size: 24,
-        ),
-      ),
-      
-      // Botões escuros
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1E3A8A), // Azul escuro
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: const Color(0xFF1E3A8A).withOpacity(0.4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      
-      // Botões secundários escuros
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF3B82F6), // Azul médio
-          side: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      
-      // Campos de texto escuros
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF1E293B), // Azul escuro variante
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF334155), width: 1), // Azul escuro
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2), // Azul médio
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        labelStyle: GoogleFonts.poppins(
-          color: const Color(0xFF94A3B8), // Azul claro para texto
-          fontSize: 16,
-        ),
-        hintStyle: GoogleFonts.poppins(
-          color: const Color(0xFF64748B), // Azul mais claro para hint
-          fontSize: 16,
-        ),
-      ),
-      
-      // Cards escuros
-      cardTheme: CardThemeData(
-        color: const Color(0xFF1E293B), // Azul escuro variante
-        elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      
-      // Tipografia escura
-      textTheme: GoogleFonts.poppinsTextTheme().copyWith(
-        displayLarge: GoogleFonts.poppins(
-          fontSize: 32,
-          fontWeight: FontWeight.w800,
-          color: Colors.white,
-        ),
-        displayMedium: GoogleFonts.poppins(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-        displaySmall: GoogleFonts.poppins(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-        headlineLarge: GoogleFonts.poppins(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
-        headlineMedium: GoogleFonts.poppins(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-        headlineSmall: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-        titleLarge: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-        titleMedium: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF94A3B8), // Azul claro
-        ),
-        titleSmall: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF64748B), // Azul mais claro
-        ),
-        bodyLarge: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: const Color(0xFF94A3B8), // Azul claro
-        ),
-        bodyMedium: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: const Color(0xFF64748B), // Azul mais claro
-        ),
-        bodySmall: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-          color: const Color(0xFF475569), // Azul ainda mais claro
-        ),
-      ),
-      
-      // Scaffold escuro
-      scaffoldBackgroundColor: const Color(0xFF020617), // Azul quase preto
-      
-      // Bottom Navigation Bar escuro
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: const Color(0xFF0F172A), // Azul muito escuro
-        elevation: 8,
-        selectedItemColor: const Color(0xFF3B82F6), // Azul médio
-        unselectedItemColor: const Color(0xFF64748B), // Azul mais claro
-        selectedLabelStyle: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: GoogleFonts.poppins(
-          fontSize: 12,
-          fontWeight: FontWeight.w400,
-        ),
-        type: BottomNavigationBarType.fixed,
-      ),
-      
-      // Floating Action Button escuro
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: Color(0xFF1E3A8A), // Azul escuro
-        foregroundColor: Colors.white,
-        elevation: 8,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-      ),
-    );
-  }
+
 }
 
 class MyHomePage extends StatefulWidget {

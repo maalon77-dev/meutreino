@@ -2,11 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'exercicios_treino_page.dart';
 import 'dart:async'; // Import para Timer
 import 'home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
+
+class HomePageWithIndex extends StatefulWidget {
+  final int initialIndex;
+  
+  const HomePageWithIndex({Key? key, required this.initialIndex}) : super(key: key);
+
+  @override
+  State<HomePageWithIndex> createState() => _HomePageWithIndexState();
+}
+
+class _HomePageWithIndexState extends State<HomePageWithIndex> {
+  @override
+  Widget build(BuildContext context) {
+    return HomePage(initialIndex: widget.initialIndex);
+  }
+}
 
 class TreinarPage extends StatefulWidget {
   final void Function(Map<String, dynamic> treino)? onTreinoSelecionado;
@@ -79,11 +94,15 @@ class _TreinarPageState extends State<TreinarPage> {
       );
 
       if (response.statusCode == 200) {
-        final List dados = jsonDecode(response.body);
+        final dynamic dados = jsonDecode(response.body);
         final Map<int, String> nomes = {};
         
-        for (var treino in dados) {
-          nomes[treino['id']] = treino['nome'];
+        if (dados is List) {
+          for (var treino in dados) {
+            if (treino is Map<String, dynamic>) {
+              nomes[treino['id']] = treino['nome'];
+            }
+          }
         }
         
         print('MAPA DE NOMES DOS TREINOS: ');
@@ -138,7 +157,7 @@ class _TreinarPageState extends State<TreinarPage> {
           if (bodyTrimmed.startsWith('[')) {
             try {
               final List dados = jsonDecode(bodyTrimmed);
-              exercicios = List<Map<String, dynamic>>.from(dados);
+              exercicios = dados.map((item) => Map<String, dynamic>.from(item)).toList();
               print('Exercícios encontrados: ${exercicios.length}');
               print('Dados dos exercícios: $exercicios');
             } catch (e) {
@@ -1076,9 +1095,10 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   }
 
   String formatTime(int seconds) {
-    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final hours = (seconds ~/ 3600).toString().padLeft(2, '0');
+    final min = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');
     final sec = (seconds % 60).toString().padLeft(2, '0');
-    return '00 : $min : $sec';
+    return '$hours : $min : $sec';
   }
 
   Future<int> _obterTempoTotalTreino() async {
@@ -1102,8 +1122,6 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
-        darkTheme: false,
-        onThemeChanged: (val) => {},
         onMenuTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -1377,58 +1395,26 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+          border: Border(
+            top: BorderSide(
+              color: Colors.grey.shade200,
+              width: 0.5,
             ),
-          ],
+          ),
         ),
         child: SafeArea(
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: const Color(0xFF3B82F6),
-              unselectedItemColor: const Color(0xFF9CA3AF),
-              selectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                fontFamily: 'Poppins',
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w400,
-                fontSize: 12,
-                fontFamily: 'Poppins',
-              ),
-              showUnselectedLabels: true,
-              iconSize: 24,
-              items: [
-                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, false),
-                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, false),
-                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, false),
-                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, false),
-                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, false),
+          child: Container(
+            height: 65,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home_outlined, 'Home', 0, _selectedIndex),
+                _buildNavItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex),
+                _buildNavItem(Icons.sports_gymnastics, 'Treinar', 2, _selectedIndex),
+                _buildNavItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex),
+                _buildNavItem(Icons.person_outline, 'Perfil', 4, _selectedIndex),
               ],
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-                if (index != 2) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                }
-              },
             ),
           ),
         ),
@@ -2589,30 +2575,69 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
      );
    }
 
-  BottomNavigationBarItem _navBarItem(IconData icon, String label, int index, int selectedIndex, bool isDark) {
+  Widget _buildNavItem(IconData icon, String label, int index, int selectedIndex) {
     final bool isSelected = index == selectedIndex;
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-            ? const Color(0xFF3B82F6).withOpacity(0.1) 
-            : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          size: 24,
-          color: isSelected 
-            ? const Color(0xFF3B82F6)
-            : const Color(0xFF9CA3AF),
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedIndex = index;
+            });
+            if (index != 2) {
+              // Navegar para a HomePage com o índice correto
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => HomePageWithIndex(initialIndex: index)),
+                (route) => false,
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  margin: const EdgeInsets.only(bottom: 2),
+                  width: isSelected ? 35 : 0,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                              Icon(
+                icon,
+                size: 20,
+                color: isSelected 
+                  ? const Color(0xFF3B82F6) 
+                  : const Color(0xFF6B7280),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 8,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected 
+                      ? const Color(0xFF3B82F6) 
+                      : const Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      label: label,
     );
   }
+
+
 } 
 
 class _InfoBlock extends StatelessWidget {

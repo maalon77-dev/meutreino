@@ -34,10 +34,12 @@ class _HistoricoPageState extends State<HistoricoPage> {
     final prefs = await SharedPreferences.getInstance();
     final usuarioId = prefs.getInt('usuario_id') ?? 0;
     if (usuarioId == 0) {
-      setState(() {
-        erro = 'Usuário não identificado. Faça login novamente.';
-        loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          erro = 'Usuário não identificado. Faça login novamente.';
+          loading = false;
+        });
+      }
       return;
     }
     await buscarHistoricoComId(usuarioId);
@@ -53,48 +55,58 @@ class _HistoricoPageState extends State<HistoricoPage> {
       print('Corpo da resposta: ${response.body}');
       if (response.statusCode == 200) {
         final List dados = jsonDecode(response.body);
-        setState(() {
-          historico = dados;
-          totalKg = 0;
-          totalTempo = 0;
-          totalKm = 0;
-          datasTreino.clear();
-          
-          for (var r in historico) {
-            totalKg += double.tryParse(r['kg_levantados'].toString()) ?? 0;
-            totalTempo += int.tryParse(r['tempo_treino_minutos'].toString()) ?? 0;
-            totalKm += double.tryParse(r['distancia_km'].toString()) ?? 0;
-            datasTreino.add(r['data_registro'].toString().substring(0, 10));
-          }
-          loading = false;
-        });
+        if (mounted) {
+          setState(() {
+            historico = dados;
+            totalKg = 0;
+            totalTempo = 0;
+            totalKm = 0;
+            datasTreino.clear();
+            
+            for (var r in historico) {
+              totalKg += double.tryParse(r['kg_levantados'].toString()) ?? 0;
+              totalTempo += int.tryParse(r['tempo_treino_minutos'].toString()) ?? 0;
+              totalKm += double.tryParse(r['distancia_km'].toString()) ?? 0;
+              datasTreino.add(r['data_registro'].toString().substring(0, 10));
+            }
+            loading = false;
+          });
+        }
       } else {
-        setState(() {
-          erro = 'Erro ao buscar histórico (Status: ${response.statusCode})';
-          loading = false;
-        });
+        if (mounted) {
+          setState(() {
+            erro = 'Erro ao buscar histórico (Status: ${response.statusCode})';
+            loading = false;
+          });
+        }
       }
     } catch (e) {
       print('Erro na requisição: $e');
-      setState(() {
-        erro = 'Erro de conexão: $e';
-        loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          erro = 'Erro de conexão: $e';
+          loading = false;
+        });
+      }
     }
   }
 
   void _onMonthChanged(DateTime focusedDay) {
-    setState(() {
-      _selectedMonth = DateTime(focusedDay.year, focusedDay.month);
-      _focusedDay = focusedDay;
-    });
+    if (mounted) {
+      setState(() {
+        _selectedMonth = DateTime(focusedDay.year, focusedDay.month);
+        _focusedDay = focusedDay;
+      });
+    }
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    setState(() {
-      _selectedDay = selectedDay;
-      _focusedDay = focusedDay;
-    });
+    if (mounted) {
+      setState(() {
+        _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
+      });
+    }
   }
 
   List<DateTime> _getEventsForDay(DateTime day) {
@@ -392,28 +404,34 @@ class _HistoricoPageState extends State<HistoricoPage> {
       
       if (response.statusCode == 200) {
         final List dados = jsonDecode(response.body);
-        setState(() {
-          _nomesTreinos.clear();
-          for (var treino in dados) {
-            final id = int.tryParse(treino['id'].toString());
-            if (id != null) {
-              _nomesTreinos[id] = treino['nome_treino'] ?? 'Treino';
+        if (mounted) {
+          setState(() {
+            _nomesTreinos.clear();
+            for (var treino in dados) {
+              final id = int.tryParse(treino['id'].toString());
+              if (id != null) {
+                _nomesTreinos[id] = treino['nome_treino'] ?? 'Treino';
+              }
             }
-          }
-          print('MAPA DE NOMES DOS TREINOS: \n');
-          _nomesTreinos.forEach((k, v) => print('id: ' + k.toString() + ' nome: ' + v));
-          _carregandoNomesTreinos = false;
-        });
+            print('MAPA DE NOMES DOS TREINOS: \n');
+            _nomesTreinos.forEach((k, v) => print('id: ' + k.toString() + ' nome: ' + v));
+            _carregandoNomesTreinos = false;
+          });
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            _carregandoNomesTreinos = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar nomes dos treinos: $e');
+      if (mounted) {
         setState(() {
           _carregandoNomesTreinos = false;
         });
       }
-    } catch (e) {
-      print('Erro ao carregar nomes dos treinos: $e');
-      setState(() {
-        _carregandoNomesTreinos = false;
-      });
     }
   }
 
@@ -505,10 +523,12 @@ class _HistoricoPageState extends State<HistoricoPage> {
                           children: [
                             IconButton(
                               onPressed: () {
-                                setState(() {
-                                  _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
-                                  _focusedDay = _selectedMonth;
-                                });
+                                if (mounted) {
+                                  setState(() {
+                                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+                                    _focusedDay = _selectedMonth;
+                                  });
+                                }
                               },
                               icon: Icon(Icons.chevron_left, color: const Color(0xFF3B82F6)),
                             ),
@@ -521,10 +541,12 @@ class _HistoricoPageState extends State<HistoricoPage> {
                             ),
                             IconButton(
                               onPressed: () {
-                                setState(() {
-                                  _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
-                                  _focusedDay = _selectedMonth;
-                                });
+                                if (mounted) {
+                                  setState(() {
+                                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+                                    _focusedDay = _selectedMonth;
+                                  });
+                                }
                               },
                               icon: Icon(Icons.chevron_right, color: const Color(0xFF3B82F6)),
                             ),

@@ -5,12 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:provider/provider.dart';
-import 'theme_provider.dart';
+
 import 'exercicios_treino_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final int initialIndex;
+  
+  const HomePage({Key? key, this.initialIndex = 0}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -30,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
     _inicializarPaginas();
     _carregarUsuarioId();
   }
@@ -78,15 +80,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-    
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
+        backgroundColor: const Color(0xFFF8FAFC),
         body: Center(
           child: CircularProgressIndicator(
-            color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+            color: const Color(0xFF3B82F6),
           ),
         ),
       );
@@ -115,8 +114,6 @@ class _HomePageState extends State<HomePage> {
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
-        darkTheme: isDark,
-        onThemeChanged: (val) => themeProvider.setTheme(val),
         onMenuTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -127,43 +124,32 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF374151),
+        iconTheme: const IconThemeData(
+          color: Color(0xFF374151),
         ),
         title: _treinoSelecionado != null
             ? Text(
                 _treinoSelecionado?['nome_treino'] ?? 'Treino',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: isDark ? Colors.white : const Color(0xFF374151),
+                  color: const Color(0xFF374151),
                   fontWeight: FontWeight.w700,
                 ),
               )
             : Text(
                 'UPMAX Fitness',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: isDark ? Colors.white : const Color(0xFF374151),
+                  color: const Color(0xFF374151),
                   fontWeight: FontWeight.w700,
                 ),
               ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              isDark ? Icons.nightlight_round : Icons.nightlight_outlined,
-              color: isDark ? Colors.white : const Color(0xFF374151),
-            ),
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-        ],
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: isDark 
-              ? [const Color(0xFF020617), const Color(0xFF0F172A)]
-              : [const Color(0xFFF8FAFC), const Color(0xFFE0E7FF)],
+            colors: [Color(0xFFF8FAFC), Color(0xFFE0E7FF)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -172,58 +158,27 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: Colors.grey.shade200,
+              width: 0.5,
             ),
-          ],
+          ),
         ),
         child: SafeArea(
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-          child: BottomNavigationBar(
-              backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
-              selectedItemColor: isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6),
-              unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF),
-              selectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                fontFamily: 'Poppins',
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w400,
-                fontSize: 12,
-                fontFamily: 'Poppins',
-              ),
-            showUnselectedLabels: true,
-              iconSize: 24,
-            items: [
-                _navBarItem(Icons.home_outlined, 'Home', 0, _selectedIndex, isDark),
-                _navBarItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex, isDark),
-                _navBarItem(Icons.rocket_launch_outlined, 'Treinar', 2, _selectedIndex, isDark),
-                _navBarItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex, isDark),
-                _navBarItem(Icons.settings_outlined, 'Perfil', 4, _selectedIndex, isDark),
-            ],
-            currentIndex: _selectedIndex,
-            onTap: (index) {
-              setState(() {
-                _selectedIndex = index;
-                _treinoSelecionado = null;
-                _exerciciosSelecionados = [];
-              });
-            },
+          child: Container(
+            height: 65,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home_outlined, 'Home', 0, _selectedIndex),
+                _buildNavItem(Icons.event_note_outlined, 'Histórico', 1, _selectedIndex),
+                _buildNavItem(Icons.sports_gymnastics, 'Treinar', 2, _selectedIndex),
+                _buildNavItem(Icons.psychology_alt_outlined, 'Assistente', 3, _selectedIndex),
+                _buildNavItem(Icons.person_outline, 'Perfil', 4, _selectedIndex),
+              ],
             ),
           ),
         ),
@@ -231,40 +186,70 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  BottomNavigationBarItem _navBarItem(IconData icon, String label, int index, int selectedIndex, bool isDark) {
+  Widget _buildNavItem(IconData icon, String label, int index, int selectedIndex) {
     final bool isSelected = index == selectedIndex;
-    return BottomNavigationBarItem(
-      icon: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected 
-            ? (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)).withValues(alpha: 0.1) 
-            : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          size: 24,
-          color: isSelected 
-            ? (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6))
-            : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedIndex = index;
+              _treinoSelecionado = null;
+              _exerciciosSelecionados = [];
+            });
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  margin: const EdgeInsets.only(bottom: 2),
+                  width: isSelected ? 35 : 0,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                              Icon(
+                icon,
+                size: 20,
+                color: isSelected 
+                  ? const Color(0xFF3B82F6) 
+                  : const Color(0xFF6B7280),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 8,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected 
+                      ? const Color(0xFF3B82F6) 
+                      : const Color(0xFF9CA3AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      label: label,
     );
   }
+
+
 }
 
 class CustomDrawer extends StatelessWidget {
-  final bool darkTheme;
-  final ValueChanged<bool> onThemeChanged;
   final ValueChanged<int> onMenuTap;
 
   const CustomDrawer({
-    required this.darkTheme,
-    required this.onThemeChanged,
     required this.onMenuTap,
     Key? key,
   }) : super(key: key);
@@ -278,10 +263,10 @@ class CustomDrawer extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.only(top: 48, bottom: 24),
             decoration: BoxDecoration(
-              color: darkTheme ? const Color(0xFF1F2937) : Colors.white,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: darkTheme ? 0.3 : 0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -315,8 +300,8 @@ class CustomDrawer extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   'Maalon Barbosa Silva Santos',
-                  style: TextStyle(
-                    color: darkTheme ? Colors.white : const Color(0xFF374151),
+                  style: const TextStyle(
+                    color: Color(0xFF374151),
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
                     fontFamily: 'Poppins',
@@ -363,23 +348,7 @@ class CustomDrawer extends StatelessWidget {
                 _drawerItem(Icons.settings_outlined, 'Configurações', () => onMenuTap(4)),
                 _drawerItem(Icons.account_balance_wallet_outlined, 'Meu Saldo', () {}),
                 _drawerItem(Icons.credit_card_outlined, 'Assinatura', () {}),
-                SwitchListTile(
-                  title: Text(
-                    'Tema Escuro',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontFamily: 'Poppins',
-                      color: darkTheme ? Colors.white : const Color(0xFF374151),
-                    ),
-                  ),
-                  value: darkTheme,
-                  onChanged: onThemeChanged,
-                  secondary: Icon(
-                    Icons.nightlight_round_outlined,
-                    color: darkTheme ? Colors.white : const Color(0xFF3B82F6),
-                  ),
-                  activeColor: const Color(0xFF6366F1),
-                ),
+
                 _drawerItem(Icons.logout, 'Sair', () async {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setBool('logado', false);
@@ -423,16 +392,16 @@ class CustomDrawer extends StatelessWidget {
 
   Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
-      leading: Icon(
-        icon, 
-        color: darkTheme ? Colors.white : const Color(0xFF3B82F6),
+      leading: const Icon(
+        Icons.fitness_center,
+        color: Color(0xFF3B82F6),
       ),
       title: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 15,
           fontFamily: 'Poppins',
-          color: darkTheme ? Colors.white : const Color(0xFF374151),
+          color: Color(0xFF374151),
         ),
       ),
       onTap: onTap,

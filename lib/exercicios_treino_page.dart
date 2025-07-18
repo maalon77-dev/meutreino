@@ -294,7 +294,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     setState(() => loading = false);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: const Color(0xFF3B82F6),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -336,11 +336,11 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981),
+                      color: const Color(0xFF3B82F6),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF10B981).withOpacity(0.3),
+                          color: const Color(0xFF3B82F6).withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -411,7 +411,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981),
+                                      color: const Color(0xFF3B82F6),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
@@ -455,7 +455,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
+                          backgroundColor: const Color(0xFF3B82F6),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -538,7 +538,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                 child: Center(
                   child: CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF10B981),
+                      const Color(0xFF3B82F6),
                     ),
                   ),
                 ),
