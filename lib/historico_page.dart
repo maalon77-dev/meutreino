@@ -220,7 +220,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
     // Buscar todos os treinos desse dia
     final treinosDoDia = historico.where((item) {
       try {
-        final d = DateTime.parse(item['data_registro']);
+        final d = DateTime.parse(item['data_treino']);
         return d.year == day.year && d.month == day.month && d.day == day.day;
       } catch (e) {
         return false;
@@ -310,31 +310,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
     return GestureDetector(
       onTap: () {
         if (hasEvent) {
-          // Montar título customizado
-          final diasSemana = [
-            'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
-          ];
-          final meses = [
-            'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-            'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
-          ];
-          final diaSemana = diasSemana[day.weekday - 1];
-          final mesExtenso = meses[day.month - 1];
-          final titulo = 'Treino de $diaSemana, dia ${day.day} de $mesExtenso de ${day.year}';
-
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(titulo),
-              content: Text(tooltipText),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Fechar'),
-                ),
-              ],
-            ),
-          );
+          _mostrarDetalhesTreino(day, treinosDoDia);
         }
         _onDaySelected(day, day);
       },
@@ -362,6 +338,266 @@ class _HistoricoPageState extends State<HistoricoPage> {
         child: diaWidget,
       ),
     );
+  }
+
+  // Método para mostrar detalhes do treino em um modal
+  void _mostrarDetalhesTreino(DateTime data, List treinosDoDia) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final diasSemana = [
+      'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
+    ];
+    final meses = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    final diaSemana = diasSemana[data.weekday - 1];
+    final mesExtenso = meses[data.month - 1];
+    final titulo = 'Treino de $diaSemana, ${data.day} de $mesExtenso de ${data.year}';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cabeçalho
+              Row(
+                children: [
+                  Icon(
+                    Icons.fitness_center,
+                    color: const Color(0xFF3B82F6),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      titulo,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF374151),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              
+              // Lista de treinos
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: treinosDoDia.map<Widget>((treino) {
+                      final nomeTreino = treino['nome_treino'] ?? 'Treino';
+                      final tempoTotal = int.tryParse(treino['tempo_total'].toString()) ?? 0;
+                      final kmPercorridos = double.tryParse(treino['km_percorridos'].toString()) ?? 0.0;
+                      final dataTreino = treino['data_treino'] ?? '';
+                      
+                      // Converter tempo para horas e minutos
+                      final horas = tempoTotal ~/ 3600;
+                      final minutos = (tempoTotal % 3600) ~/ 60;
+                      final segundos = tempoTotal % 60;
+                      
+                      String tempoFormatado = '';
+                      if (horas > 0) {
+                        tempoFormatado = '${horas}h ${minutos.toString().padLeft(2, '0')}min';
+                      } else {
+                        tempoFormatado = '${minutos}min ${segundos.toString().padLeft(2, '0')}s';
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Nome do treino
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.sports_gymnastics,
+                                  color: const Color(0xFF3B82F6),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    nomeTreino,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : const Color(0xFF374151),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Concluído',
+                                    style: const TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            // Estatísticas do treino
+                            Row(
+                              children: [
+                                // Tempo
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.timer_outlined,
+                                        size: 16,
+                                        color: const Color(0xFF60A5FA),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          tempoFormatado,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                
+                                // Distância
+                                if (kmPercorridos > 0)
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.directions_run_outlined,
+                                          size: 16,
+                                          color: const Color(0xFF93C5FD),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            '${kmPercorridos.toStringAsFixed(1)} km',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            
+                            // Data e hora
+                            if (dataTreino.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 14,
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatarDataCompleta(dataTreino),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              
+              // Botão fechar
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Fechar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Método para formatar data completa
+  String _formatarDataCompleta(String data) {
+    try {
+      final date = DateTime.parse(data);
+      final diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+      final meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      
+      final diaSemana = diasSemana[date.weekday - 1];
+      final mes = meses[date.month - 1];
+      final hora = date.hour.toString().padLeft(2, '0');
+      final minuto = date.minute.toString().padLeft(2, '0');
+      
+      return '$diaSemana, ${date.day} $mes ${date.year} às ${hora}:${minuto}';
+    } catch (e) {
+      return data;
+    }
   }
 
   List _getTreinosDoMes() {

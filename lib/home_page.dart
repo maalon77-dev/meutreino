@@ -529,122 +529,7 @@ class _HomeContent extends StatefulWidget {
     );
   }
 
-  static Widget _buildCalendar(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Table(
-      border: TableBorder.all(color: Colors.transparent),
-                  children: [
-        TableRow(
-          children: [
-            Center(child: Text('Dom', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Seg', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Ter', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Qua', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Qui', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Sex', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-            Center(child: Text('Sáb', style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280)))), // Azul claro
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay(context, '1'),
-            _calendarDay(context, '2'),
-            _calendarDay(context, '3'),
-            _calendarDay(context, '4'),
-            _calendarDay(context, '5', checked: true),
-            _calendarDay(context, '6', checked: true),
-            _calendarDay(context, '7'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay(context, '8', checked: true),
-            _calendarDay(context, '9'),
-            _calendarDay(context, '10', checked: true),
-            _calendarDay(context, '11', selected: true),
-            _calendarDay(context, '12'),
-            _calendarDay(context, '13'),
-            _calendarDay(context, '14'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay(context, '15'),
-            _calendarDay(context, '16'),
-            _calendarDay(context, '17'),
-            _calendarDay(context, '18'),
-            _calendarDay(context, '19'),
-            _calendarDay(context, '20'),
-            _calendarDay(context, '21'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay(context, '22'),
-            _calendarDay(context, '23'),
-            _calendarDay(context, '24'),
-            _calendarDay(context, '25'),
-            _calendarDay(context, '26'),
-            _calendarDay(context, '27'),
-            _calendarDay(context, '28'),
-          ],
-        ),
-        TableRow(
-          children: [
-            _calendarDay(context, '29'),
-            _calendarDay(context, '30'),
-            _calendarDay(context, '31'),
-            const SizedBox(),
-            const SizedBox(),
-            const SizedBox(),
-            const SizedBox(),
-          ],
-        ),
-      ],
-    );
-  }
 
-  static Widget _calendarDay(BuildContext context, String day, {bool checked = false, bool selected = false}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-        color: selected
-            ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
-            : checked
-                ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withValues(alpha: 0.2) // Azul médio
-                : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: selected
-              ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
-              : checked
-                  ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withValues(alpha: 0.5) // Azul médio
-                  : isDark
-                      ? const Color(0xFF475569) // Azul mais claro
-                      : const Color(0xFFE5E7EB),
-          width: selected ? 2 : 1,
-        ),
-      ),
-      height: 32,
-      child: Center(
-        child: Text(
-          day,
-                              style: TextStyle(
-            color: selected
-                ? Colors.white
-                : checked
-                    ? (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)) // Azul médio
-                    : isDark
-                        ? Colors.white
-                        : const Color(0xFF374151),
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _HomeContentState extends State<_HomeContent> {
@@ -680,41 +565,45 @@ class _HomeContentState extends State<_HomeContent> {
     try {
       print('Buscando histórico para usuário ID: $usuarioId');
       final response = await http.get(
-        Uri.parse('https://airfit.online/api/api.php?tabela=historico_saldo&acao=historico_usuario&usuario_id=$usuarioId'),
+        Uri.parse('https://airfit.online/api/api.php?acao=historico_treino_especifico&usuario_id=$usuarioId'),
       );
 
       print('Status da resposta: ${response.statusCode}');
       print('Corpo da resposta: ${response.body}');
 
       if (response.statusCode == 200) {
-        final List dados = jsonDecode(response.body);
-        final List<Map<String, dynamic>> historicoOrdenado = List<Map<String, dynamic>>.from(dados);
+        final dados = jsonDecode(response.body);
+        final List<Map<String, dynamic>> historicoOrdenado = List<Map<String, dynamic>>.from(dados['historico'] ?? []);
         
         print('Dados recebidos: ${historicoOrdenado.length} registros');
         
         // Ordenar por data mais recente
-        historicoOrdenado.sort((a, b) => DateTime.parse(b['data_registro']).compareTo(DateTime.parse(a['data_registro'])));
+        historicoOrdenado.sort((a, b) => DateTime.parse(b['data_treino']).compareTo(DateTime.parse(a['data_treino'])));
         
         // Calcular treinos do mês atual
         final agora = DateTime.now();
         final treinosMes = historicoOrdenado.where((treino) {
-          final dataTreino = DateTime.parse(treino['data_registro']);
+          final dataTreino = DateTime.parse(treino['data_treino']);
           return dataTreino.year == agora.year && dataTreino.month == agora.month;
         }).length;
 
-        // Calcular total de kg
-        double total = 0;
+        // Calcular total de tempo do mês (em minutos)
+        double totalTempoMes = 0;
         for (var treino in historicoOrdenado) {
-          total += double.tryParse(treino['kg_levantados'].toString()) ?? 0;
+          final dataTreino = DateTime.parse(treino['data_treino']);
+          if (dataTreino.year == agora.year && dataTreino.month == agora.month) {
+            final tempoTotal = int.tryParse(treino['tempo_total'].toString()) ?? 0;
+            totalTempoMes += tempoTotal / 60; // Converter segundos para minutos
+          }
         }
 
         print('Treinos no mês atual: $treinosMes');
-        print('Total de kg: $total');
+        print('Total de tempo no mês: ${totalTempoMes.toStringAsFixed(0)} minutos');
 
         setState(() {
           historico = historicoOrdenado;
           treinosMesAtual = treinosMes;
-          totalKg = total;
+          totalKg = totalTempoMes; // Usar totalTempoMes no lugar de totalKg
         });
       } else {
         print('Erro na resposta: ${response.statusCode}');
@@ -738,12 +627,14 @@ class _HomeContentState extends State<_HomeContent> {
   String _formatarPeso(dynamic kg) {
     try {
       final peso = double.parse(kg.toString());
-      if (peso >= 1000) {
-        return '${(peso / 1000).toStringAsFixed(1)}t';
+      if (peso >= 60) {
+        final horas = peso ~/ 60;
+        final minutos = (peso % 60).toInt();
+        return horas > 0 ? '${horas}h ${minutos}min' : '${minutos}min';
       }
-      return '${peso.toStringAsFixed(0)} kg';
+      return '${peso.toInt()} min';
     } catch (e) {
-      return '0 kg';
+      return '0 min';
     }
   }
 
@@ -895,7 +786,7 @@ class _HomeContentState extends State<_HomeContent> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              historico.isNotEmpty ? 'Treino' : 'Último Treino',
+                              historico.isNotEmpty ? (historico[0]['nome_treino'] ?? 'Treino') : 'Último Treino',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -909,7 +800,7 @@ class _HomeContentState extends State<_HomeContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _formatarData(historico[0]['data_registro']),
+                              _formatarData(historico[0]['data_treino']),
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
                                 fontSize: 12,
@@ -926,7 +817,7 @@ class _HomeContentState extends State<_HomeContent> {
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    _formatarTempo(historico[0]['tempo_treino_minutos']),
+                                    _formatarTempo((int.tryParse(historico[0]['tempo_total'].toString()) ?? 0) ~/ 60),
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1058,7 +949,7 @@ class _HomeContentState extends State<_HomeContent> {
                 Row(
                   children: [
                     Expanded(
-                      child: _HomeContent._statCard(context, _formatarPeso(totalKg), 'Total levantado', Icons.fitness_center, isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)),
+                      child: _HomeContent._statCard(context, _formatarPeso(totalKg), 'Tempo total', Icons.timer_outlined, isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1104,14 +995,27 @@ class _HomeContentState extends State<_HomeContent> {
                 else
                   Column(
           children: [
-                      if (historico.length >= 1) _HomeContent._buildTreinoItem(context, _formatarData(historico[0]['data_registro']), 'Treino', _formatarTempo(historico[0]['tempo_treino_minutos'])),
-                      if (historico.length >= 2) _HomeContent._buildTreinoItem(context, _formatarData(historico[1]['data_registro']), 'Treino', _formatarTempo(historico[1]['tempo_treino_minutos'])),
-                      if (historico.length >= 3) _HomeContent._buildTreinoItem(context, _formatarData(historico[2]['data_registro']), 'Treino', _formatarTempo(historico[2]['tempo_treino_minutos'])),
+                      if (historico.length >= 1) _HomeContent._buildTreinoItem(context, _formatarData(historico[0]['data_treino']), historico[0]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[0]['tempo_total'].toString()) ?? 0) ~/ 60)),
+                      if (historico.length >= 2) _HomeContent._buildTreinoItem(context, _formatarData(historico[1]['data_treino']), historico[1]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[1]['tempo_total'].toString()) ?? 0) ~/ 60)),
+                      if (historico.length >= 3) _HomeContent._buildTreinoItem(context, _formatarData(historico[2]['data_treino']), historico[2]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[2]['tempo_total'].toString()) ?? 0) ~/ 60)),
                     ],
                   ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Navegar para a aba de histórico (índice 1)
+                    if (context.mounted) {
+                      // Encontrar o widget HomePage pai e navegar para o histórico
+                      final homePageState = context.findAncestorStateOfType<_HomePageState>();
+                      if (homePageState != null) {
+                        homePageState.setState(() {
+                          homePageState._selectedIndex = 1;
+                          homePageState._treinoSelecionado = null;
+                          homePageState._exerciciosSelecionados = [];
+                        });
+                      }
+                    }
+                  },
                   child: Text(
                     'Ver Histórico Completo',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1123,53 +1027,7 @@ class _HomeContentState extends State<_HomeContent> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          
-          // Card de calendário
-          Container(
-        decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white, // Azul escuro variante
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF60A5FA).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.calendar_month,
-                        color: Color(0xFF60A5FA),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Calendário de Treinos',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-            ],
-          ),
-                const SizedBox(height: 20),
-                _HomeContent._buildCalendar(context),
-              ],
-        ),
-          ),
+
         ],
       ),
     );
