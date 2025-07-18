@@ -49,25 +49,25 @@ class _HistoricoPageState extends State<HistoricoPage> {
     try {
       print('Buscando histórico para usuário ID: $usuarioId');
       final response = await http.get(
-        Uri.parse('https://airfit.online/api/api.php?tabela=historico_saldo&acao=historico_usuario&usuario_id=$usuarioId'),
+        Uri.parse('https://airfit.online/api/api.php?acao=historico_treino_especifico&usuario_id=$usuarioId'),
       );
       print('Status da resposta: ${response.statusCode}');
       print('Corpo da resposta: ${response.body}');
       if (response.statusCode == 200) {
-        final List dados = jsonDecode(response.body);
+        final dados = jsonDecode(response.body);
         if (mounted) {
           setState(() {
-            historico = dados;
+            historico = dados['historico'] ?? [];
             totalKg = 0;
             totalTempo = 0;
             totalKm = 0;
             datasTreino.clear();
             
             for (var r in historico) {
-              totalKg += double.tryParse(r['kg_levantados'].toString()) ?? 0;
-              totalTempo += int.tryParse(r['tempo_treino_minutos'].toString()) ?? 0;
-              totalKm += double.tryParse(r['distancia_km'].toString()) ?? 0;
-              datasTreino.add(r['data_registro'].toString().substring(0, 10));
+              // Converter tempo_total de segundos para minutos
+              totalTempo += (int.tryParse(r['tempo_total'].toString()) ?? 0) ~/ 60;
+              totalKm += double.tryParse(r['km_percorridos'].toString()) ?? 0;
+              datasTreino.add(r['data_treino'].toString().substring(0, 10));
             }
             loading = false;
           });
@@ -230,7 +230,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
     String tooltipText = '';
     if (treinosDoDia.isNotEmpty) {
       tooltipText = treinosDoDia.map((item) {
-        final nome = _getNomeTreino(item['treino_id']);
+                    final nome = item['nome_treino'] ?? 'Treino';
         final minutos = int.tryParse(item['tempo_treino_minutos'].toString()) ?? 0;
         final horas = minutos ~/ 60;
         final mins = minutos % 60;
@@ -367,7 +367,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
   List _getTreinosDoMes() {
     return historico.where((item) {
       try {
-        final itemDate = DateTime.parse(item['data_registro']);
+        final itemDate = DateTime.parse(item['data_treino']);
         return itemDate.year == _selectedMonth.year && 
                itemDate.month == _selectedMonth.month;
       } catch (e) {
@@ -379,7 +379,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
   List _getUltimosTreinos() {
     // Ordenar por data mais recente e pegar apenas os últimos 5
     final treinosOrdenados = List.from(historico);
-    treinosOrdenados.sort((a, b) => DateTime.parse(b['data_registro']).compareTo(DateTime.parse(a['data_registro'])));
+    treinosOrdenados.sort((a, b) => DateTime.parse(b['data_treino']).compareTo(DateTime.parse(a['data_treino'])));
     return treinosOrdenados.take(5).toList();
   }
 
@@ -399,7 +399,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
   Future<void> _carregarNomesTreinos() async {
     try {
       final response = await http.get(
-        Uri.parse('https://airfit.online/api/api.php?tabela=treinos&acao=listar_todos'),
+        Uri.parse('https://airfit.online/api/api.php?acao=listar_treinos_usuario&usuario_id=3'),
       );
       
       if (response.statusCode == 200) {
@@ -436,25 +436,20 @@ class _HistoricoPageState extends State<HistoricoPage> {
   }
 
   String _getNomeTreino(dynamic treinoId) {
-    final id = int.tryParse(treinoId.toString());
-    print('Buscando nome para treino_id: ' + treinoId.toString() + ' (convertido: ' + (id?.toString() ?? 'null') + ')');
-    if (id != null && _nomesTreinos.containsKey(id)) {
-      print('Encontrado: ' + _nomesTreinos[id]!);
-      return _nomesTreinos[id]!;
-    }
-    print('NÃO ENCONTRADO!');
-    return 'Treino';
+    // Na nova tabela historico_treinos, o nome do treino já vem no campo nome_treino
+    // Não precisamos mais fazer a conversão por ID
+    return treinoId?.toString() ?? 'Treino';
   }
 
   double _getPesoTotalDoMes() {
-    return _getTreinosDoMes().fold(0.0, (sum, item) {
-      return sum + (double.tryParse(item['kg_levantados'].toString()) ?? 0);
-    });
+    // Como não há kg_levantados na nova tabela, retornar 0
+    return 0.0;
   }
 
   int _getTempoTotalDoMes() {
     return _getTreinosDoMes().fold(0, (sum, item) {
-      return sum + (int.tryParse(item['tempo_treino_minutos'].toString()) ?? 0);
+      // Converter tempo_total de segundos para minutos
+      return sum + ((int.tryParse(item['tempo_total'].toString()) ?? 0) ~/ 60);
     });
   }
 
@@ -666,7 +661,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _getNomeTreino(item['treino_id']),
+                                            item['nome_treino'] ?? 'Treino',
                                             style: textTheme.titleLarge?.copyWith(
                                               fontWeight: FontWeight.w600,
                                               color: isDark ? Colors.white : const Color(0xFF374151),
@@ -674,7 +669,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            _getDiaSemana(item['data_registro']),
+                                            _getDiaSemana(item['data_treino']),
                                             style: textTheme.bodySmall?.copyWith(
                                               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
                                             ),
@@ -684,11 +679,11 @@ class _HistoricoPageState extends State<HistoricoPage> {
                                             children: [
                                               Icon(Icons.timer_outlined, size: 16, color: const Color(0xFF60A5FA)),
                                               const SizedBox(width: 4),
-                                              Text('${item['tempo_treino_minutos']} min', style: textTheme.bodySmall),
+                                              Text('${(int.tryParse(item['tempo_total'].toString()) ?? 0) ~/ 60} min', style: textTheme.bodySmall),
                                               const SizedBox(width: 16),
-                                              Icon(Icons.monitor_weight_outlined, size: 16, color: const Color(0xFF93C5FD)),
+                                              Icon(Icons.directions_run_outlined, size: 16, color: const Color(0xFF93C5FD)),
                                               const SizedBox(width: 4),
-                                              Text('${item['kg_levantados']} kg', style: textTheme.bodySmall),
+                                              Text('${item['km_percorridos']} km', style: textTheme.bodySmall),
                                             ],
                                           ),
                                         ],

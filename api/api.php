@@ -267,6 +267,87 @@ switch ($acao) {
         echo json_encode($dados);
         break;
 
+    case 'historico_treino_especifico':
+        $usuario_id = intval($_REQUEST['usuario_id'] ?? 0);
+        $treino_id = intval($_REQUEST['treino_id'] ?? 0);
+        
+        if ($usuario_id === 0) {
+            echo json_encode(['erro' => 'usuario_id é obrigatório']);
+            break;
+        }
+        
+        // Se não foi especificado um treino_id, buscar todos os treinos do usuário
+        if ($treino_id === 0) {
+            // Buscar todos os treinos do usuário na tabela historico_treinos
+            $sql_historico = "SELECT * FROM historico_treinos WHERE usuario_id = ? ORDER BY data_treino DESC";
+            $stmt_historico = $conn->prepare($sql_historico);
+            $stmt_historico->bind_param('i', $usuario_id);
+            $stmt_historico->execute();
+            $result_historico = $stmt_historico->get_result();
+            
+            $historico = [];
+            while ($row = $result_historico->fetch_assoc()) {
+                $historico[] = $row;
+            }
+            
+            $resultado = [
+                'historico' => $historico
+            ];
+            
+            echo json_encode($resultado);
+            break;
+        }
+        
+        // Se foi especificado um treino_id, buscar histórico específico
+        // Primeiro, buscar o nome do treino
+        $sql_treino = "SELECT nome_treino FROM treinos WHERE id = ?";
+        $stmt_treino = $conn->prepare($sql_treino);
+        $stmt_treino->bind_param('i', $treino_id);
+        $stmt_treino->execute();
+        $result_treino = $stmt_treino->get_result();
+        $treino = $result_treino->fetch_assoc();
+        
+        if (!$treino) {
+            echo json_encode([
+                'total_vezes' => 0,
+                'ultima_vez' => null,
+                'nome_treino' => null,
+                'mensagem' => 'Treino não encontrado'
+            ]);
+            break;
+        }
+        
+        $nome_treino = $treino['nome_treino'];
+        
+        // Buscar histórico na tabela historico_treinos
+        $sql_historico = "SELECT * FROM historico_treinos WHERE usuario_id = ? AND nome_treino = ? ORDER BY data_treino DESC";
+        $stmt_historico = $conn->prepare($sql_historico);
+        $stmt_historico->bind_param('is', $usuario_id, $nome_treino);
+        $stmt_historico->execute();
+        $result_historico = $stmt_historico->get_result();
+        
+        $historico = [];
+        while ($row = $result_historico->fetch_assoc()) {
+            $historico[] = $row;
+        }
+        
+        $total_vezes = count($historico);
+        $ultima_vez = null;
+        
+        if ($total_vezes > 0) {
+            $ultima_vez = $historico[0]['data_treino'];
+        }
+        
+        $resultado = [
+            'total_vezes' => $total_vezes,
+            'ultima_vez' => $ultima_vez,
+            'nome_treino' => $nome_treino,
+            'historico' => $historico
+        ];
+        
+        echo json_encode($resultado);
+        break;
+
     default:
         echo json_encode(['erro' => 'Ação não reconhecida']);
 }

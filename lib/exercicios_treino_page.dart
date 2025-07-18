@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'treinar_page.dart';
 
 class ExerciciosTreinoPage extends StatefulWidget {
@@ -23,11 +24,17 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
   bool loading = true;
   List<Map<String, dynamic>> exerciciosApi = [];
   String? erro;
+  
+  // Variáveis para o histórico do treino
+  int totalVezes = 0;
+  String? ultimaVez;
+  bool carregandoHistorico = false;
 
   @override
   void initState() {
     super.initState();
     _carregarExercicios();
+    _carregarHistoricoTreino();
   }
 
   Future<void> _carregarExercicios() async {
@@ -119,6 +126,170 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         erro = 'Erro de conexão: $e';
         loading = false;
       });
+    }
+  }
+
+  String _formatarDataUltimaVez(String? dataRegistro) {
+    if (dataRegistro == null) return '';
+    
+    try {
+      final data = DateTime.parse(dataRegistro);
+      
+      // Array com os nomes dos dias da semana
+      final diasSemana = [
+        'Segunda-feira',
+        'Terça-feira', 
+        'Quarta-feira',
+        'Quinta-feira',
+        'Sexta-feira',
+        'Sábado',
+        'Domingo'
+      ];
+      
+      // Retorna o nome do dia da semana
+      return diasSemana[data.weekday - 1];
+    } catch (e) {
+      return '';
+    }
+  }
+
+  void _mostrarHistoricoTreino() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.history,
+                color: const Color(0xFF3B82F6),
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Histórico do Treino',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (totalVezes > 0) ...[
+                Text(
+                  'Esse treino foi realizado $totalVezes ${totalVezes == 1 ? 'vez' : 'vezes'}',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Última vez: ${_formatarDataUltimaVez(ultimaVez)}',
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    fontSize: 14,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'Ainda não realizado',
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Fechar',
+                style: TextStyle(
+                  color: const Color(0xFF3B82F6),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _carregarHistoricoTreino() async {
+    try {
+      print('=== INICIANDO CARREGAMENTO DO HISTÓRICO ===');
+      setState(() {
+        carregandoHistorico = true;
+      });
+      
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      final treinoId = widget.treino['id'];
+      
+      print('Usuário ID: $usuarioId');
+      print('Treino ID: $treinoId');
+      
+      if (usuarioId == null || treinoId == null) {
+        print('Usuário ID ou Treino ID não encontrado');
+        setState(() {
+          carregandoHistorico = false;
+        });
+        return;
+      }
+      
+      final url = Uri.parse('https://airfit.online/api/api.php?acao=historico_treino_especifico&usuario_id=$usuarioId&treino_id=$treinoId');
+      print('Buscando histórico do treino: $url');
+      
+      final response = await http.get(url);
+      print('Status da resposta do histórico: ${response.statusCode}');
+      print('Corpo da resposta do histórico: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final dados = jsonDecode(response.body);
+        print('Dados decodificados: $dados');
+        
+        if (mounted) {
+          setState(() {
+            totalVezes = dados['total_vezes'] ?? 0;
+            ultimaVez = dados['ultima_vez'];
+            carregandoHistorico = false;
+          });
+          print('Estado atualizado - Total vezes: $totalVezes, Última vez: $ultimaVez');
+        }
+      } else {
+        print('Erro ao buscar histórico: ${response.statusCode}');
+        if (mounted) {
+          setState(() {
+            carregandoHistorico = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar histórico do treino: $e');
+      if (mounted) {
+        setState(() {
+          carregandoHistorico = false;
+        });
+      }
     }
   }
 
@@ -424,13 +595,28 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    'Ainda não realizado',
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                                      fontSize: 14,
+                                  if (carregandoHistorico)
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          isDark ? Colors.white70 : const Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    GestureDetector(
+                                      onTap: () {
+                                        _mostrarHistoricoTreino();
+                                      },
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 16,
+                                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ],
