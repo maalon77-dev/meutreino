@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,70 @@ import 'dart:async'; // Import para Timer
 import 'home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
+
+class TimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Remove todos os caracteres não numéricos
+    String text = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Limita a 6 dígitos (HHMMSS)
+    if (text.length > 6) {
+      text = text.substring(0, 6);
+    }
+    
+    // Formata o texto
+    String formattedText = '';
+    if (text.length >= 1) {
+      formattedText = text.substring(0, 1);
+    }
+    if (text.length >= 2) {
+      formattedText = text.substring(0, 2);
+    }
+    if (text.length >= 3) {
+      formattedText = '${text.substring(0, 2)}:${text.substring(2, 3)}';
+    }
+    if (text.length >= 4) {
+      formattedText = '${text.substring(0, 2)}:${text.substring(2, 4)}';
+    }
+    if (text.length >= 5) {
+      formattedText = '${text.substring(0, 2)}:${text.substring(2, 4)}:${text.substring(4, 5)}';
+    }
+    if (text.length >= 6) {
+      formattedText = '${text.substring(0, 2)}:${text.substring(2, 4)}:${text.substring(4, 6)}';
+    }
+    
+    // Valida os valores
+    if (formattedText.length >= 2) {
+      int hours = int.tryParse(formattedText.substring(0, 2)) ?? 0;
+      if (hours > 23) {
+        formattedText = '23${formattedText.substring(2)}';
+      }
+    }
+    
+    if (formattedText.length >= 5) {
+      int minutes = int.tryParse(formattedText.substring(3, 5)) ?? 0;
+      if (minutes > 59) {
+        formattedText = '${formattedText.substring(0, 3)}59${formattedText.substring(5)}';
+      }
+    }
+    
+    if (formattedText.length >= 8) {
+      int seconds = int.tryParse(formattedText.substring(6, 8)) ?? 0;
+      if (seconds > 59) {
+        formattedText = '${formattedText.substring(0, 6)}59';
+      }
+    }
+    
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
+    );
+  }
+}
 
 class HomePageWithIndex extends StatefulWidget {
   final int initialIndex;
@@ -959,6 +1024,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   Future<void> _mostrarPopupConclusao() async {
     final tempoTotal = await _obterTempoTotalTreino();
     final TextEditingController kmController = TextEditingController();
+    final TextEditingController tempoController = TextEditingController(text: formatTime(tempoTotal));
     
     showDialog(
       context: context,
@@ -967,9 +1033,16 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              Icon(Icons.check_circle, color: const Color(0xFF3B82F6), size: 24),
               const SizedBox(width: 8),
-              Text('Treino Concluído!'),
+              Text(
+                'Treino Concluído!',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF374151),
+                ),
+              ),
             ],
           ),
           content: Column(
@@ -978,12 +1051,49 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
             children: [
               Text(
                 'Parabéns! Você concluiu todos os exercícios.',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF6B7280),
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Text(
-                'Tempo Total: ${formatTime(tempoTotal)}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.green),
+                'Tempo Total:',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: tempoController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  TimeInputFormatter(),
+                ],
+                decoration: InputDecoration(
+                  hintText: '00:00:00',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFF3B82F6)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF3B82F6),
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -991,11 +1101,38 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'Quantos KM foram percorridos?',
+                  labelStyle: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6B7280),
+                  ),
                   hintText: 'Ex: 5.5',
+                  hintStyle: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: const Color(0xFF9CA3AF),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFFE5E7EB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFFE5E7EB)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: const Color(0xFF3B82F6)),
                   ),
                   suffixText: 'KM',
+                  suffixStyle: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -1007,20 +1144,38 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 // Resetar exercícios para continuar treinando
                 _resetarTodosExercicios();
               },
-              child: Text('Continuar Treinando'),
+              child: Text(
+                'Continuar Treinando',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF6B7280),
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
                 final kmPercorridos = double.tryParse(kmController.text) ?? 0.0;
-                _salvarTreinoCompleto(tempoTotal, kmPercorridos);
+                final tempoEditado = _parseTempoEditado(tempoController.text);
+                _salvarTreinoCompleto(tempoEditado, kmPercorridos);
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // Voltar para a tela anterior
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: Text('Salvar e Sair'),
+              child: Text(
+                'Salvar e Sair',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         );
@@ -1067,7 +1222,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Treino salvo com sucesso!'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: const Color(0xFF3B82F6),
                 ),
               );
             } else {
@@ -1099,6 +1254,38 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     final min = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');
     final sec = (seconds % 60).toString().padLeft(2, '0');
     return '$hours : $min : $sec';
+  }
+
+  int _parseTempoEditado(String tempoString) {
+    try {
+      // Remove espaços e caracteres especiais, mantendo apenas números e ':'
+      final cleanString = tempoString.replaceAll(RegExp(r'[^\d:]'), '');
+      
+      // Divide por ':'
+      final parts = cleanString.split(':');
+      
+      if (parts.length == 3) {
+        final hours = int.tryParse(parts[0]) ?? 0;
+        final minutes = int.tryParse(parts[1]) ?? 0;
+        final seconds = int.tryParse(parts[2]) ?? 0;
+        
+        return hours * 3600 + minutes * 60 + seconds;
+      } else if (parts.length == 2) {
+        // Se só tem 2 partes, assume que são minutos:segundos
+        final minutes = int.tryParse(parts[0]) ?? 0;
+        final seconds = int.tryParse(parts[1]) ?? 0;
+        
+        return minutes * 60 + seconds;
+      } else if (parts.length == 1 && parts[0].isNotEmpty) {
+        // Se só tem 1 parte, assume que são segundos
+        return int.tryParse(parts[0]) ?? 0;
+      }
+    } catch (e) {
+      print('Erro ao parsear tempo: $e');
+    }
+    
+    // Se não conseguir parsear, retorna 0
+    return 0;
   }
 
   Future<int> _obterTempoTotalTreino() async {
@@ -1246,16 +1433,16 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               final isConcluido = ex['concluido'] == true;
               
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isConcluido 
-                        ? const Color(0xFFE8F5E8) // Verde claro para concluído
+                        ? const Color(0xFFF0F0F0) // Cinza claro para concluído
                         : const Color(0xFFF5F5F5), // Cinza para pendente
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: isConcluido 
-                        ? Border.all(color: const Color(0xFF4CAF50), width: 1)
+                        ? Border.all(color: const Color(0xFFCCCCCC), width: 0.5)
                         : null,
                     boxShadow: [
                       BoxShadow(
@@ -1269,21 +1456,21 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                     children: [
                       // GIF pausado à esquerda
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           color: const Color(0xFFE8E8E8),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               child: img.isNotEmpty
-                                  ? Image.network(
+                                                                      ? Image.network(
                                       'https://airfit.online/$img',
-                                      width: 60,
-                                      height: 60,
+                                      width: 50,
+                                      height: 50,
                                       fit: BoxFit.cover,
                                       // Simula GIF pausado mostrando apenas o primeiro frame
                                       gaplessPlayback: true,
@@ -1298,14 +1485,14 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                             if (isConcluido)
                             Container(
                               decoration: BoxDecoration(
-                                  color: const Color(0xFF4CAF50).withOpacity(0.8),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: const Color(0xFFCCCCCC).withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(10),
                               ),
                                 child: Center(
                                 child: Icon(
                                     Icons.check_circle,
                                   color: Colors.white,
-                                    size: 20,
+                                    size: 16,
                                 ),
                               ),
                             ),
@@ -1321,10 +1508,10 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                             nome,
                             style: GoogleFonts.poppins(
                             color: isConcluido 
-                                ? const Color(0xFF4CAF50)
+                                ? const Color(0xFF888888)
                                 : const Color(0xFF2A2A2A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                               letterSpacing: 0.2,
                             decoration: isConcluido 
                                 ? TextDecoration.lineThrough
@@ -1339,51 +1526,64 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                       
                       // Botão de play à direita ou ícone de concluído
                       isConcluido
-                          ? Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF4CAF50),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
+                          ? Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  // Botão de check não tem ação, mas mantém o efeito visual
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFCCCCCC),
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 24,
+                                  child: Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
                               ),
                             )
-                          : GestureDetector(
-                          onTap: () {
-                            _trocarParaExercicioComFade(idx);
-                          },
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFCDFF47),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
+                          : Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  _trocarParaExercicioComFade(idx);
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE0E0E0),
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.play_arrow,
+                                    color: const Color(0xFF666666),
+                                    size: 20,
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                                child: Icon(
-                              Icons.play_arrow,
-                              color: Colors.black,
-                              size: 24,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1425,43 +1625,94 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   // Novos widgets para o design futurista
   Widget _buildHolographicHeader(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF2D3748), // Cinza escuro
+            const Color(0xFF4A5568), // Cinza médio
+          ],
         ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.1),
+            blurRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'TREINO ATIVO',
-            style: GoogleFonts.poppins(
-              color: const Color(0xFF3B82F6),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF48BB78), // Verde para indicar ativo
+                  borderRadius: BorderRadius.circular(4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF48BB78).withOpacity(0.5),
+                      blurRadius: 8,
+                      offset: const Offset(0, 0),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'TREINO ATIVO',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.green,
-                width: 1,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF718096), // Cinza claro
+                  const Color(0xFFA0AEC0), // Cinza mais claro
+                ],
               ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.1),
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             child: Text(
               formatTime(tempoTotalTreino),
               style: GoogleFonts.poppins(
-                color: Colors.green,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
               ),
             ),
           ),
@@ -1668,7 +1919,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
            child: Container(
              padding: const EdgeInsets.all(12),
              decoration: BoxDecoration(
-               color: const Color(0xFFCDFF47), // Verde limão como na imagem
+               color: const Color(0xFF3B82F6), // Azul como na imagem
                borderRadius: BorderRadius.circular(16),
                boxShadow: [
                  BoxShadow(
@@ -1685,7 +1936,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                  Text(
                    'Séries',
                    style: GoogleFonts.poppins(
-                     color: Colors.black,
+                     color: Colors.white,
                      fontSize: 11,
                      fontWeight: FontWeight.w500,
                    ),
@@ -1696,7 +1947,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                  Text(
                    '$serieAtual / $totalSeries',
                    style: GoogleFonts.poppins(
-                     color: Colors.black,
+                     color: Colors.white,
                      fontSize: 16,
                      fontWeight: FontWeight.w700,
                    ),
@@ -2146,7 +2397,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                      height: 6,
                      decoration: BoxDecoration(
                        color: isCompleted 
-                           ? const Color(0xFFCDFF47)
+                           ? const Color(0xFF3B82F6)
                            : const Color(0xFFE8E8E8),
                        borderRadius: BorderRadius.circular(3),
                      ),
@@ -2174,13 +2425,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                Container(
                  padding: const EdgeInsets.all(6),
                  decoration: BoxDecoration(
-                   color: const Color(0xFFCDFF47),
+                   color: const Color(0xFF3B82F6),
                    borderRadius: BorderRadius.circular(6),
                  ),
                  child: Icon(
                    Icons.repeat,
                    size: 14,
-                   color: Colors.black,
+                   color: Colors.white,
                  ),
                ),
                const SizedBox(width: 8),
@@ -2416,7 +2667,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
          height: 64,
          decoration: BoxDecoration(
            color: onPressed != null 
-               ? const Color(0xFFCDFF47)
+               ? const Color(0xFF3B82F6)
                : const Color(0xFFCCCCCC),
            shape: BoxShape.circle,
            boxShadow: onPressed != null ? [
@@ -2434,13 +2685,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    children: [
                      Icon(
                        Icons.pause,
-                       color: Colors.black,
+                       color: Colors.white,
                        size: 18,
                      ),
                      Text(
                        '${restTime}s',
                        style: GoogleFonts.poppins(
-                         color: Colors.black,
+                         color: Colors.white,
                          fontSize: 8,
                          fontWeight: FontWeight.w500,
                        ),
@@ -2450,7 +2701,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                : Icon(
                    Icons.play_arrow,
                    color: onPressed != null 
-                       ? Colors.black
+                       ? Colors.white
                        : Colors.grey[600],
                    size: 24,
                  ),
@@ -2528,7 +2779,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                decoration: BoxDecoration(
                  color: onPressed != null
                      ? (isPrimary
-                         ? const Color(0xFFCDFF47) // Verde limão para botão principal
+                         ? const Color(0xFF3B82F6) // Azul para botão principal
                          : const Color(0xFFE8E8E8)) // Cinza claro para botões secundários
                      : const Color(0xFFCCCCCC), // Cinza para desabilitado
                  borderRadius: BorderRadius.circular(16),
@@ -2548,7 +2799,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                      size: 18,
                      color: onPressed != null
                          ? (isPrimary 
-                             ? Colors.black // Preto no botão verde
+                             ? Colors.white // Branco no botão azul
                              : const Color(0xFF666666)) // Cinza escuro nos secundários
                          : Colors.grey[500],
                    ),
@@ -2556,11 +2807,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                    Text(
                      text,
                      style: GoogleFonts.poppins(
-                       color: onPressed != null
-                           ? (isPrimary 
-                               ? Colors.black // Preto no botão verde
-                               : const Color(0xFF666666)) // Cinza escuro nos secundários
-                           : Colors.grey[500],
+                                            color: onPressed != null
+                         ? (isPrimary 
+                             ? Colors.white // Branco no botão azul
+                             : const Color(0xFF666666)) // Cinza escuro nos secundários
+                         : Colors.grey[500],
                        fontSize: 14,
                        fontWeight: FontWeight.w600,
                        letterSpacing: 0.3,
