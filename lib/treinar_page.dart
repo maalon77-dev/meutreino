@@ -1625,7 +1625,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     }
 
     // Para múltiplos animais, sempre mostrar o número exato com plural correto
-    String nomeVariado = _getPluralCorreto(animalEscolhido['nome'], quantidade);
+    String nomeVariado = '$quantidade ${_getPluralCorreto(animalEscolhido['nome'], quantidade)}';
     String descricaoVariada = 'Você carregou o peso de $quantidade ${_getPluralCorreto(animalEscolhido['nome'], quantidade)}!';
 
     // Sempre retornar apenas 1 emoji, independente da quantidade
@@ -1779,11 +1779,14 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 ),
                 const SizedBox(height: 24),
                 
-                // Botão para fechar
+                // Botão para coletar prêmio
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      // Salvar o prêmio
+                      await _salvarPremio(pesoTotal, premio);
+                      
                       Navigator.of(context).pop();
                       // Navegar de volta para a home
                       Navigator.of(context).pushAndRemoveUntil(
@@ -3930,6 +3933,112 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         ),
       ),
     );
+  }
+
+  // Função para salvar o prêmio conquistado
+  Future<void> _salvarPremio(double pesoTotal, Map<String, dynamic> premio) async {
+    try {
+      print('=== INICIANDO SALVAMENTO DO PRÊMIO ===');
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      if (usuarioId == null) {
+        print('❌ Usuário não logado');
+        return;
+      }
+      
+      print('✅ UsuarioId: $usuarioId');
+      print('✅ Animal: ${premio['nome']}');
+      print('✅ Emoji: ${premio['emoji']}');
+      print('✅ Peso animal: ${premio['peso']}');
+      print('✅ Peso total: $pesoTotal');
+      print('✅ Nome treino: ${widget.nomeTreino}');
+      
+      final url = Uri.parse('https://airfit.online/api/salvar_premio_v2.php');
+      final body = jsonEncode({
+        'usuario_id': usuarioId,
+        'nome_animal': premio['nome'], // Salvar o nome completo (ex: "15 Tigres")
+        'emoji_animal': premio['emoji'],
+        'peso_animal': premio['peso'],
+        'peso_total_levantado': pesoTotal,
+        'data_conquista': DateTime.now().toIso8601String(),
+        'nome_treino': widget.nomeTreino,
+      });
+      
+      print('🌐 URL: $url');
+      print('📦 Body: $body');
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      
+      print('📡 Status da resposta: ${response.statusCode}');
+      print('📄 Corpo da resposta: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['sucesso'] == true) {
+            print('✅ Prêmio salvo com sucesso!');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('🎉 Prêmio ${premio['nome']} coletado com sucesso!'),
+                  backgroundColor: const Color(0xFF10B981),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          } else {
+            print('❌ Erro ao salvar prêmio: ${responseData['erro']}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('❌ Erro ao salvar prêmio: ${responseData['erro']}'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        } catch (jsonError) {
+          print('❌ Erro ao decodificar JSON: $jsonError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('❌ Erro ao processar resposta do servidor'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        print('❌ Erro HTTP ${response.statusCode}: ${response.body}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Erro de conexão: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Erro ao salvar prêmio: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Erro ao salvar prêmio: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
 

@@ -7,6 +7,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import 'exercicios_treino_page.dart';
+import 'premios_page.dart';
+import 'metas_page.dart';
+import 'services/meta_service.dart';
+import 'models/meta.dart';
 
 class HomePage extends StatefulWidget {
   final int initialIndex;
@@ -537,6 +541,7 @@ class _HomeContentState extends State<_HomeContent> {
   int treinosMesAtual = 0;
   double totalKg = 0;
   bool isLoading = true;
+  int? usuarioId;
 
   @override
   void initState() {
@@ -550,6 +555,7 @@ class _HomeContentState extends State<_HomeContent> {
       final usuarioId = prefs.getInt('usuario_id');
       
       if (usuarioId != null && usuarioId > 0) {
+        this.usuarioId = usuarioId;
         await _buscarHistorico(usuarioId);
       }
     } catch (e) {
@@ -652,6 +658,125 @@ class _HomeContentState extends State<_HomeContent> {
       return '0 min';
     }
   }
+
+  Widget _buildMetasSection(BuildContext context, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.flag,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Minhas Metas',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MetasPage(usuarioId: usuarioId!),
+                    ),
+                  );
+                },
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.flag_outlined,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Crie suas metas para acompanhar o progresso',
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Botão para ver todas as metas
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MetasPage(usuarioId: usuarioId!),
+                ),
+              );
+            },
+            child: Text(
+              'Ver Minhas Metas',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -839,11 +964,16 @@ class _HomeContentState extends State<_HomeContent> {
                 ),
               ),
               const SizedBox(width: 16),
-              // Card de criar meta
+              // Card de prêmios
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    // TODO: Implementar criação de meta
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PremiosPage(),
+                      ),
+                    );
                   },
                   child: Container(
                     height: 140, // Altura fixa para ambos os cards
@@ -868,19 +998,19 @@ class _HomeContentState extends State<_HomeContent> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: (isDark ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA)).withValues(alpha: 0.1),
+                                color: (isDark ? const Color(0xFFF59E0B) : const Color(0xFFF59E0B)).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
-                                Icons.flag,
-                                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF60A5FA),
+                                Icons.emoji_events,
+                                color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFF59E0B),
                                 size: 18,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Criar Meta',
+                                'Meus Prêmios',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -890,7 +1020,7 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Defina seus objetivos de treino',
+                          'Veja suas conquistas',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
                             fontSize: 12,
@@ -903,6 +1033,11 @@ class _HomeContentState extends State<_HomeContent> {
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          
+          // Seção de Metas
+          _buildMetasSection(context, isDark),
+          
           const SizedBox(height: 24),
           
           // Card de histórico
