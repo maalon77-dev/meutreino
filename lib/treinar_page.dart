@@ -1019,16 +1019,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       stopwatch.stop();
       timerCronometro?.cancel(); // Parar o timer quando concluir
       
-      // Calcular peso total e mostrar prêmio automaticamente
+      // Calcular peso total
       double pesoTotal = _calcularPesoTotal();
       Map<String, dynamic> premio = _determinarPremio(pesoTotal);
       
-      // Salvar o treino automaticamente
-      await _salvarTreinoCompleto(tempoTotalTreino, 0.0);
-      
-      // Mostrar modal de prêmio
+      // Mostrar modal de tempo e KM primeiro, depois o prêmio
       if (mounted) {
-        _mostrarModalPremio(pesoTotal, premio);
+        _mostrarModalTempoKm(pesoTotal, premio);
       }
     }
   }
@@ -1202,6 +1199,103 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     final exerciciosConcluidos = widget.exercicios.where((ex) => ex['concluido'] == true).length;
     final totalExercicios = widget.exercicios.length;
     
+    // Verificar se pelo menos 1 exercício foi concluído
+    if (exerciciosConcluidos == 0) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: const Color(0xFFF59E0B),
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Nenhum Exercício Concluído',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF374151),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Você precisa concluir pelo menos 1 exercício para finalizar o treino.',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF374151),
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: const Color(0xFFF59E0B),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Complete pelo menos um exercício para salvar o treino no seu histórico.',
+                          style: TextStyle(
+                            color: const Color(0xFF92400E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  'Entendi',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1349,6 +1443,86 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     return pesoTotal;
   }
 
+  // Função para obter o plural correto em português
+  String _getPluralCorreto(String nomeAnimal, int quantidade) {
+    if (quantidade == 1) return nomeAnimal;
+    
+    // Regras específicas para cada animal
+    switch (nomeAnimal) {
+      case 'Porco':
+        return 'Porcos';
+      case 'Cavalo':
+        return 'Cavalos';
+      case 'Vaca':
+        return 'Vacas';
+      case 'Touro':
+        return 'Touros';
+      case 'Rinoceronte':
+        return 'Rinocerontes';
+      case 'Elefante':
+        return 'Elefantes';
+      case 'Urso Pardo':
+        return 'Ursos Pardos';
+      case 'Camelo':
+        return 'Camelos';
+      case 'Girafa':
+        return 'Girafas';
+      case 'Hipopótamo':
+        return 'Hipopótamos';
+      case 'Canguru':
+        return 'Cangurus';
+      case 'Leão':
+        return 'Leões';
+      case 'Tigre':
+        return 'Tigres';
+      case 'Búfalo':
+        return 'Búfalos';
+      case 'Zebra':
+        return 'Zebras';
+      case 'Alce':
+        return 'Alces';
+      case 'Javali':
+        return 'Javalis';
+      case 'Panda':
+        return 'Pandas';
+      case 'Crocodilo':
+        return 'Crocodilos';
+      case 'Cervo':
+        return 'Cervos';
+      case 'Orangotango':
+        return 'Orangotangos';
+      case 'Tamanduá':
+        return 'Tamanduás';
+      case 'Avestruz':
+        return 'Avestruzes';
+      case 'Lhama':
+        return 'Lhamas';
+      case 'Foca':
+        return 'Focas';
+      case 'Urso Polar':
+        return 'Ursos Polares';
+      case 'Gnu':
+        return 'Gnus';
+      case 'Antílope':
+        return 'Antílopes';
+      case 'Urso Negro':
+        return 'Ursos Negros';
+      case 'Dromedário':
+        return 'Dromedários';
+      case 'Lobo':
+        return 'Lobos';
+      case 'Baleia Jubarte':
+        return 'Baleias Jubarte';
+      case 'Gorila':
+        return 'Gorilas';
+      case 'Chimpanzé':
+        return 'Chimpanzés';
+      default:
+        // Regra geral: adicionar 's' no final
+        return nomeAnimal + 's';
+    }
+  }
+
   // Função para determinar o prêmio baseado no peso total (SISTEMA RANDÔMICO)
   Map<String, dynamic> _determinarPremio(double pesoTotal) {
     final premiosAnimais = [
@@ -1369,28 +1543,37 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       {'nome': 'Zebra', 'emoji': '🦓', 'cor': Color(0xFF7C3AED), 'peso': 380.0, 'descricao': 'Você manteve o ritmo de uma zebra!'},
       {'nome': 'Alce', 'emoji': '🦌', 'cor': Color(0xFFDC2626), 'peso': 600.0, 'descricao': 'Você dominou o peso de um alce!'},
       {'nome': 'Javali', 'emoji': '🐗', 'cor': Color(0xFF059669), 'peso': 110.0, 'descricao': 'Feroz como um javali!'},
-      {'nome': 'Anta', 'emoji': '🦣', 'cor': Color(0xFF8B5CF6), 'peso': 300.0, 'descricao': 'Você levou uma anta inteira!'},
       {'nome': 'Panda', 'emoji': '🐼', 'cor': Color(0xFF1D4ED8), 'peso': 120.0, 'descricao': 'Fofo e forte como um panda!'},
       {'nome': 'Crocodilo', 'emoji': '🐊', 'cor': Color(0xFF6EE7B7), 'peso': 500.0, 'descricao': 'Você domou um crocodilo!'},
       {'nome': 'Cervo', 'emoji': '🦌', 'cor': Color(0xFFA855F7), 'peso': 150.0, 'descricao': 'Você carregou um cervo!'},
       {'nome': 'Orangotango', 'emoji': '🦧', 'cor': Color(0xFF9333EA), 'peso': 100.0, 'descricao': 'Você aguentou o peso de um orangotango!'},
-      {'nome': 'Bicho-Preguiça', 'emoji': '🦥', 'cor': Color(0xFFFBBF24), 'peso': 60.0, 'descricao': 'Devagar, mas sempre! Peso de uma preguiça!'},
       {'nome': 'Tamanduá', 'emoji': '🦡', 'cor': Color(0xFF6366F1), 'peso': 65.0, 'descricao': 'Força silenciosa de um tamanduá!'},
       {'nome': 'Avestruz', 'emoji': '🦤', 'cor': Color(0xFFF97316), 'peso': 160.0, 'descricao': 'Correu com o peso de um avestruz!'},
-      {'nome': 'Cangambá', 'emoji': '🦨', 'cor': Color(0xFF14B8A6), 'peso': 55.0, 'descricao': 'Você sobreviveu ao peso e ao cheiro do gambá!'},
       {'nome': 'Lhama', 'emoji': '🦙', 'cor': Color(0xFF3B82F6), 'peso': 130.0, 'descricao': 'Você subiu os Andes com uma lhama!'},
-      {'nome': 'Cabra', 'emoji': '🐐', 'cor': Color(0xFFEC4899), 'peso': 75.0, 'descricao': 'Escalou com o peso de uma cabra montanhesa!'},
-      {'nome': 'Bode', 'emoji': '🐏', 'cor': Color(0xFF0EA5E9), 'peso': 90.0, 'descricao': 'Você encarou o peso de um bode!'},
       {'nome': 'Foca', 'emoji': '🦭', 'cor': Color(0xFF9333EA), 'peso': 150.0, 'descricao': 'Você levou o peso de uma foca brincando!'},
       {'nome': 'Urso Polar', 'emoji': '🐻‍❄️', 'cor': Color(0xFF9CA3AF), 'peso': 450.0, 'descricao': 'Você foi gelado e forte como um urso polar!'},
       {'nome': 'Gnu', 'emoji': '🐃', 'cor': Color(0xFF6D28D9), 'peso': 250.0, 'descricao': 'Você enfrentou um gnu!'},
       {'nome': 'Antílope', 'emoji': '🦌', 'cor': Color(0xFFF59E0B), 'peso': 150.0, 'descricao': 'Você correu com o peso de um antílope!'},
       {'nome': 'Urso Negro', 'emoji': '🐻', 'cor': Color(0xFF4B5563), 'peso': 270.0, 'descricao': 'Você enfrentou um urso negro!'},
       {'nome': 'Dromedário', 'emoji': '🐫', 'cor': Color(0xFFF87171), 'peso': 400.0, 'descricao': 'Travessia do deserto com um dromedário!'},
-      {'nome': 'Bicho-Preguiça Gigante', 'emoji': '🦥', 'cor': Color(0xFFF43F5E), 'peso': 80.0, 'descricao': 'Força lenta, mas constante!'},
-      {'nome': 'Lobo-Europeu', 'emoji': '🐺', 'cor': Color(0xFF2563EB), 'peso': 60.0, 'descricao': 'Você correu como um lobo europeu!'},
-      {'nome': 'Bicho-Preguiça Lendário', 'emoji': '🦥', 'cor': Color(0xFFFBBF24), 'peso': 85.0, 'descricao': 'Preguiça, mas com super força!'},
-      {'nome': 'Hipopótamo Dourado', 'emoji': '🦛', 'cor': Color(0xFFF59E0B), 'peso': 1600.0, 'descricao': 'Você conquistou o hipopótamo dourado!'}
+      {'nome': 'Lobo', 'emoji': '🐺', 'cor': Color(0xFF2563EB), 'peso': 60.0, 'descricao': 'Você correu como um lobo!'},
+      {'nome': 'Hipopótamo', 'emoji': '🦛', 'cor': Color(0xFFF59E0B), 'peso': 1600.0, 'descricao': 'Você conquistou um hipopótamo!'},
+      {'nome': 'Baleia Jubarte', 'emoji': '🐋', 'cor': Color(0xFF3B82F6), 'peso': 40000.0, 'descricao': 'Colossal! O peso de uma baleia jubarte!'},
+      {'nome': 'Gorila', 'emoji': '🦍', 'cor': Color(0xFF1F2937), 'peso': 200.0, 'descricao': 'Rei da selva! Peso de um gorila!'},
+      {'nome': 'Chimpanzé', 'emoji': '🐒', 'cor': Color(0xFF8B5CF6), 'peso': 70.0, 'descricao': 'Inteligente e forte! Chimpanzé!'},
+      {'nome': 'Elefante', 'emoji': '🐘', 'cor': Color(0xFF059669), 'peso': 5000.0, 'descricao': 'Gigante! Peso de um elefante!'},
+      {'nome': 'Rinoceronte', 'emoji': '🦏', 'cor': Color(0xFF6B7280), 'peso': 2500.0, 'descricao': 'Rinoceronte! Poderoso!'},
+      {'nome': 'Girafa', 'emoji': '🦒', 'cor': Color(0xFFDC2626), 'peso': 1200.0, 'descricao': 'Girafa! Altura e força!'},
+      {'nome': 'Búfalo', 'emoji': '🐃', 'cor': Color(0xFF1E293B), 'peso': 900.0, 'descricao': 'Búfalo! Selvagem!'},
+      {'nome': 'Zebra', 'emoji': '🦓', 'cor': Color(0xFF0F766E), 'peso': 400.0, 'descricao': 'Zebra! Rara e forte!'},
+      {'nome': 'Alce', 'emoji': '🦌', 'cor': Color(0xFF115E59), 'peso': 700.0, 'descricao': 'Alce! Majestoso!'},
+      {'nome': 'Javali', 'emoji': '🐗', 'cor': Color(0xFF134E4A), 'peso': 150.0, 'descricao': 'Javali! Feroz!'},
+      {'nome': 'Leão', 'emoji': '🦁', 'cor': Color(0xFF1A4339), 'peso': 250.0, 'descricao': 'Leão! Rei da selva!'},
+      {'nome': 'Tigre', 'emoji': '🐅', 'cor': Color(0xFF1E3F35), 'peso': 300.0, 'descricao': 'Tigre! O maior felino!'},
+      {'nome': 'Cavalo', 'emoji': '🐎', 'cor': Color(0xFF223B31), 'peso': 450.0, 'descricao': 'Cavalo! Nobre e forte!'},
+      {'nome': 'Vaca', 'emoji': '🐄', 'cor': Color(0xFF26372D), 'peso': 750.0, 'descricao': 'Vaca! Grande e forte!'},
+      {'nome': 'Touro', 'emoji': '🐂', 'cor': Color(0xFF2A3329), 'peso': 800.0, 'descricao': 'Touro! Bravo e forte!'},
+      {'nome': 'Camelo', 'emoji': '🐫', 'cor': Color(0xFF2E2F25), 'peso': 800.0, 'descricao': 'Camelo! Duas corcovas!'}
     ];
 
     // Criar lista de animais candidatos baseado no peso total
@@ -1441,20 +1624,14 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
       };
     }
 
-    // Para múltiplos animais, sempre mostrar o número exato
-    String nomeVariado = '$quantidade ${animalEscolhido['nome']}s';
-    String descricaoVariada = 'Você carregou o peso de $quantidade ${animalEscolhido['nome']}s!';
+    // Para múltiplos animais, sempre mostrar o número exato com plural correto
+    String nomeVariado = _getPluralCorreto(animalEscolhido['nome'], quantidade);
+    String descricaoVariada = 'Você carregou o peso de $quantidade ${_getPluralCorreto(animalEscolhido['nome'], quantidade)}!';
 
-    // Criar múltiplos emojis lado a lado (máximo 5 emojis visíveis)
-    String emojisMultiplos = '';
-    int emojisParaMostrar = quantidade > 5 ? 5 : quantidade;
-    for (int i = 0; i < emojisParaMostrar; i++) {
-      emojisMultiplos += animalEscolhido['emoji'];
-    }
-
+    // Sempre retornar apenas 1 emoji, independente da quantidade
     return {
       'nome': nomeVariado,
-      'emoji': emojisMultiplos,
+      'emoji': animalEscolhido['emoji'],
       'cor': animalEscolhido['cor'],
       'peso': animalEscolhido['peso'],
       'descricao': descricaoVariada,
@@ -1513,35 +1690,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 ),
                 const SizedBox(height: 16),
                 
-                // Emojis dos animais
-                if (premio['emoji'].length <= 3) ...[
-                  // Para 1-3 animais, mostrar emojis grandes
-                  Text(
-                    premio['emoji'],
-                    style: TextStyle(fontSize: 60),
-                  ),
-                ] else ...[
-                  // Para mais de 3 animais, agrupar de forma compacta
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: premio['cor'].withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (int i = 0; i < premio['emoji'].length; i++)
-                          Text(
-                            premio['emoji'][i],
-                            style: TextStyle(fontSize: 35),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
+                // Emoji do animal
+                Text(
+                  premio['emoji'],
+                  style: TextStyle(fontSize: 60),
+                ),
                 const SizedBox(height: 16),
                 
                 // Nome do prêmio
@@ -1590,6 +1743,23 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Ícone para explicar o cálculo
+                          GestureDetector(
+                            onTap: () => _mostrarExplicacaoCalculo(),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.help_outline,
+                                color: const Color(0xFF3B82F6),
+                                size: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -1646,23 +1816,355 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     );
   }
 
+  // Função para mostrar explicação do cálculo
+  void _mostrarExplicacaoCalculo() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ícone de informação
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.science,
+                      size: 30,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Título
+                Text(
+                  'Como é calculado?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF374151),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Fórmula
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Volume de Treino =',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF374151),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Peso × Repetições × Séries',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Explicação
+                Text(
+                  'Este cálculo tem base científica e é usado em fisiologia do exercício para medir o volume total de carga levantada.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Exemplo prático
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Exemplo:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF10B981),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '50 kg × 10 reps × 4 séries = 2.000 kg',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Importância
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Importância:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Mais volume = maior potencial para hipertrofia muscular',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Botão para fechar
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Entendi!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Função para mostrar modal perguntando tempo e KM
+  Future<void> _mostrarModalTempoKm(double pesoTotal, Map<String, dynamic> premio) async {
+    // Converter o tempo do cronômetro para minutos
+    int tempoMinutos = tempoTotalTreino ~/ 60;
+    double kmPercorridos = 0.0;
+    
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ícone de cronômetro
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.timer,
+                          size: 40,
+                          color: Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Título
+                    Text(
+                      'Finalizar Treino',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF374151),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Campo de tempo
+                    TextField(
+                      controller: TextEditingController(text: tempoMinutos.toString()),
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Tempo do treino (minutos)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.timer),
+                      ),
+                      onChanged: (value) {
+                        tempoMinutos = int.tryParse(value) ?? 0;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Instrução sobre KM
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Se você fez corrida, caminhada ou bike, insira a distância para salvar no seu histórico de treinos!',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: const Color(0xFF6B7280),
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Campo de KM
+                    TextField(
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'KM percorridos',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.directions_run),
+                      ),
+                      onChanged: (value) {
+                        kmPercorridos = double.tryParse(value) ?? 0.0;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Botão para continuar
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(context).pop();
+                          
+                          // Salvar o treino com os dados informados
+                          await _salvarTreinoCompleto(tempoMinutos * 60, kmPercorridos);
+                          
+                          // Mostrar modal de prêmio
+                          if (mounted) {
+                            _mostrarModalPremio(pesoTotal, premio);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Finalizar e Ver Prêmio',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _concluirTreino() async {
     try {
-      // Calcular km percorridos (pode ser 0 se não houver dados)
-      double kmPercorridos = 0.0;
-      
       // Calcular peso total carregado
       double pesoTotal = _calcularPesoTotal();
       
       // Determinar prêmio baseado no peso
       Map<String, dynamic> premio = _determinarPremio(pesoTotal);
       
-      // Salvar o treino com o tempo atual
-      await _salvarTreinoCompleto(tempoTotalTreino, kmPercorridos);
-      
-      // Mostrar modal de prêmio
+      // Primeiro mostrar modal para perguntar tempo e KM
       if (mounted) {
-        _mostrarModalPremio(pesoTotal, premio);
+        await _mostrarModalTempoKm(pesoTotal, premio);
       }
     } catch (e) {
       if (mounted) {
