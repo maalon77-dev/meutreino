@@ -39,9 +39,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_conquista = $input['data_conquista'] ?? null;
     $nome_treino = $input['nome_treino'] ?? null;
     
-    if (!$usuario_id || !$nome_animal || !$peso_animal || !$peso_total_levantado) {
-        echo json_encode(['erro' => 'Dados obrigatórios não fornecidos']);
-        exit;
+    // Novos campos para troféus de metas
+    $tipo_conquista = $input['tipo_conquista'] ?? 'treino'; // 'treino' ou 'meta'
+    $nome_meta = $input['nome_meta'] ?? null;
+    $raridade_trofeu = $input['raridade_trofeu'] ?? null;
+    $categoria_trofeu = $input['categoria_trofeu'] ?? null;
+    $descricao_trofeu = $input['descricao_trofeu'] ?? null;
+    $mensagem_motivacional = $input['mensagem_motivacional'] ?? null;
+    
+    // Validação diferente para treinos e metas
+    if ($tipo_conquista === 'treino') {
+        if (!$usuario_id || !$nome_animal || !$peso_animal || !$peso_total_levantado) {
+            echo json_encode(['erro' => 'Dados obrigatórios não fornecidos para treino']);
+            exit;
+        }
+    } else if ($tipo_conquista === 'meta') {
+        if (!$usuario_id || !$nome_animal || !$nome_meta) {
+            echo json_encode(['erro' => 'Dados obrigatórios não fornecidos para meta']);
+            exit;
+        }
     }
     
     try {
@@ -52,10 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 usuario_id INT NOT NULL,
                 nome_animal VARCHAR(100) NOT NULL,
                 emoji_animal VARCHAR(10) NOT NULL,
-                peso_animal DECIMAL(10,2) NOT NULL,
-                peso_total_levantado DECIMAL(10,2) NOT NULL,
+                peso_animal DECIMAL(10,2) NULL,
+                peso_total_levantado DECIMAL(10,2) NULL,
                 data_conquista DATETIME NOT NULL,
-                nome_treino VARCHAR(100) NOT NULL,
+                nome_treino VARCHAR(100) NULL,
+                tipo_conquista ENUM('treino', 'meta') DEFAULT 'treino',
+                nome_meta VARCHAR(100) NULL,
+                raridade_trofeu INT NULL,
+                categoria_trofeu VARCHAR(50) NULL,
+                descricao_trofeu TEXT NULL,
+                mensagem_motivacional TEXT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
@@ -63,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Inserir o prêmio
         $stmt = $pdo->prepare("
             INSERT INTO premios_conquistados 
-            (usuario_id, nome_animal, emoji_animal, peso_animal, peso_total_levantado, data_conquista, nome_treino) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (usuario_id, nome_animal, emoji_animal, peso_animal, peso_total_levantado, data_conquista, nome_treino, tipo_conquista, nome_meta, raridade_trofeu, categoria_trofeu, descricao_trofeu, mensagem_motivacional) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
@@ -74,7 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $peso_animal,
             $peso_total_levantado,
             $data_conquista ?: date('Y-m-d H:i:s'),
-            $nome_treino
+            $nome_treino,
+            $tipo_conquista,
+            $nome_meta,
+            $raridade_trofeu,
+            $categoria_trofeu,
+            $descricao_trofeu,
+            $mensagem_motivacional
         ]);
         
         $id = $pdo->lastInsertId();

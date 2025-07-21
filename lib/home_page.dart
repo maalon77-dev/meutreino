@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:fl_chart/fl_chart.dart';
 
 import 'exercicios_treino_page.dart';
 import 'premios_page.dart';
@@ -542,6 +543,10 @@ class _HomeContentState extends State<_HomeContent> {
   double totalKg = 0;
   bool isLoading = true;
   int? usuarioId;
+  
+  // Estado para metas
+  List<Meta> _metas = [];
+  bool _carregandoMetas = false;
 
   @override
   void initState() {
@@ -556,7 +561,10 @@ class _HomeContentState extends State<_HomeContent> {
       
       if (usuarioId != null && usuarioId > 0) {
         this.usuarioId = usuarioId;
-        await _buscarHistorico(usuarioId);
+        await Future.wait([
+          _buscarHistorico(usuarioId),
+          _carregarMetas(),
+        ]);
       }
     } catch (e) {
       print('Erro ao carregar dados: $e');
@@ -628,6 +636,78 @@ class _HomeContentState extends State<_HomeContent> {
     } catch (e) {
       return '--/--';
     }
+  }
+
+  Future<void> _carregarMetas() async {
+    if (usuarioId == null) return;
+    
+    setState(() {
+      _carregandoMetas = true;
+    });
+
+    try {
+      await metaService.initialize();
+      final todasMetas = await metaService.obterTodasMetas(usuarioId!);
+      
+      // Pegar apenas as duas últimas metas criadas
+      final metasOrdenadas = todasMetas.toList()
+        ..sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
+      
+      setState(() {
+        _metas = metasOrdenadas.take(2).toList();
+        _carregandoMetas = false;
+      });
+    } catch (e) {
+      print('Erro ao carregar metas: $e');
+      setState(() {
+        _carregandoMetas = false;
+      });
+    }
+  }
+
+  List<FlSpot> _getChartSpots(Meta meta) {
+    if (meta.progressos.isEmpty) {
+      return [
+        FlSpot(0, meta.valorInicial),
+        FlSpot(1, meta.valorInicial),
+      ];
+    }
+
+    // Ordenar progressos por data (mais antigo primeiro) para o gráfico
+    final progressosOrdenados = List<ProgressoMeta>.from(meta.progressos);
+    progressosOrdenados.sort((a, b) => a.data.compareTo(b.data));
+
+    final spots = <FlSpot>[];
+    spots.add(FlSpot(0, meta.valorInicial));
+    
+    for (int i = 0; i < progressosOrdenados.length; i++) {
+      spots.add(FlSpot((i + 1).toDouble(), progressosOrdenados[i].valor));
+    }
+    
+    return spots;
+  }
+
+  double _getMinY(Meta meta) {
+    if (meta.progressos.isEmpty) {
+      return meta.valorInicial * 0.9;
+    }
+    
+    final minValor = meta.progressos.map((p) => p.valor).reduce((a, b) => a < b ? a : b);
+    final minInicial = meta.valorInicial;
+    return (minValor < minInicial ? minValor : minInicial) * 0.9;
+  }
+
+  double _getMaxY(Meta meta) {
+    if (meta.progressos.isEmpty) {
+      return meta.valorInicial * 1.1;
+    }
+    
+    final maxValor = meta.progressos.map((p) => p.valor).reduce((a, b) => a > b ? a : b);
+    final maxDesejado = meta.valorDesejado;
+    final maxInicial = meta.valorInicial;
+    
+    final maxValue = [maxValor, maxDesejado, maxInicial].reduce((a, b) => a > b ? a : b);
+    return maxValue * 1.1;
   }
 
   String _formatarPeso(dynamic kg) {
@@ -725,6 +805,17 @@ class _HomeContentState extends State<_HomeContent> {
           ),
           const SizedBox(height: 16),
           
+          if (_carregandoMetas)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: CircularProgressIndicator(
+                  color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else if (_metas.isEmpty)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -750,7 +841,150 @@ class _HomeContentState extends State<_HomeContent> {
                 ),
               ],
             ),
-          ),
+            )
+          else
+            Column(
+              children: [
+                // Gráfico das duas últimas metas
+                Row(
+                  children: _metas.map((meta) {
+                    return Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF475569) : const Color(0xFFE5E7EB),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  meta.tipo.icone,
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    meta.nome,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF374151),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${meta.valorAtual.toStringAsFixed(1)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6),
+                                        ),
+                                      ),
+                                      Text(
+                                        meta.tipo.unidade,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '${meta.percentualConclusao.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: meta.percentualConclusao >= 100 
+                                        ? const Color(0xFF10B981)
+                                        : (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // LineChart pequeno
+                            if (meta.progressos.isNotEmpty)
+                              SizedBox(
+                                height: 60,
+                                child: LineChart(
+                                  LineChartData(
+                                    gridData: FlGridData(show: false),
+                                    titlesData: FlTitlesData(show: false),
+                                    borderData: FlBorderData(show: false),
+                                    minX: 0,
+                                    maxX: (_getChartSpots(meta).length - 1).toDouble(),
+                                    minY: _getMinY(meta),
+                                    maxY: _getMaxY(meta),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: _getChartSpots(meta),
+                                        isCurved: true,
+                                        curveSmoothness: 0.35,
+                                        preventCurveOverShooting: true,
+                                        color: meta.percentualConclusao >= 100 
+                                            ? const Color(0xFF10B981)
+                                            : (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)),
+                                        barWidth: 2,
+                                        dotData: FlDotData(show: false),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: (meta.percentualConclusao >= 100 
+                                              ? const Color(0xFF10B981)
+                                              : (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6)))
+                                              .withValues(alpha: 0.1),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF475569) : const Color(0xFFE5E7EB),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Sem dados',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          
           const SizedBox(height: 12),
           
           // Botão para ver todas as metas

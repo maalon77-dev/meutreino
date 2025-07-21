@@ -23,6 +23,7 @@ class _MetaCardState extends State<MetaCard> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _progressAnimation;
+  bool _showHistorico = false;
 
   @override
   void initState() {
@@ -235,34 +236,309 @@ class _MetaCardState extends State<MetaCard> with TickerProviderStateMixin {
                       
                       const SizedBox(height: 16),
                       
-                      // Gráfico de progresso
+                      // Gráfico de progresso interativo
                       if (meta.progressos.isNotEmpty)
-                        SizedBox(
-                          height: 120,
-                          child: LineChart(
-                            LineChartData(
-                              gridData: FlGridData(show: false),
-                              titlesData: FlTitlesData(show: false),
-                              borderData: FlBorderData(show: false),
-                              lineBarsData: [
-                                LineChartBarData(
-                                  spots: _getChartSpots(meta),
-                                  isCurved: true,
-                                  color: isConcluida 
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFF3B82F6),
-                                  barWidth: 3,
-                                  dotData: FlDotData(show: false),
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    color: (isConcluida 
-                                        ? const Color(0xFF10B981)
-                                        : const Color(0xFF3B82F6))
-                                        .withOpacity(0.1),
+                        Container(
+                          height: 180,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Evolução do Progresso',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isConcluida 
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFF3B82F6),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (isConcluida 
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFF3B82F6))
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${meta.progressos.length} registros',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isConcluida 
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF3B82F6),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: LineChart(
+                                  LineChartData(
+                                    gridData: FlGridData(
+                                      show: true,
+                                      drawVerticalLine: true,
+                                      horizontalInterval: _getGridInterval(meta),
+                                      verticalInterval: 1,
+                                      getDrawingHorizontalLine: (value) {
+                                        return FlLine(
+                                          color: const Color(0xFFE5E7EB),
+                                          strokeWidth: 1,
+                                          dashArray: [5, 5],
+                                        );
+                                      },
+                                      getDrawingVerticalLine: (value) {
+                                        return FlLine(
+                                          color: const Color(0xFFE5E7EB),
+                                          strokeWidth: 1,
+                                          dashArray: [5, 5],
+                                        );
+                                      },
+                                    ),
+                                                                         titlesData: FlTitlesData(
+                                       show: false,
+                                     ),
+                                    borderData: FlBorderData(
+                                      show: true,
+                                      border: Border.all(
+                                        color: const Color(0xFFE5E7EB),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    minX: 0,
+                                    maxX: (_getChartSpots(widget.meta).length - 1).toDouble(),
+                                    minY: _getMinY(widget.meta),
+                                    maxY: _getMaxY(widget.meta),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: _getChartSpots(widget.meta),
+                                        isCurved: true,
+                                        curveSmoothness: 0.35,
+                                        preventCurveOverShooting: true,
+                                        color: isConcluida 
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF3B82F6),
+                                        barWidth: 3,
+                                        dotData: FlDotData(
+                                          show: true,
+                                          getDotPainter: (spot, percent, barData, index) {
+                                            return FlDotCirclePainter(
+                                              radius: 4,
+                                              color: isConcluida 
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFF3B82F6),
+                                              strokeWidth: 2,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: (isConcluida 
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFF3B82F6))
+                                              .withOpacity(0.1),
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              (isConcluida 
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFF3B82F6))
+                                                  .withOpacity(0.3),
+                                              (isConcluida 
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFF3B82F6))
+                                                  .withOpacity(0.05),
+                                            ],
+                                          ),
+                                        ),
+                                        shadow: Shadow(
+                                          blurRadius: 8,
+                                          color: (isConcluida 
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFF3B82F6))
+                                              .withOpacity(0.3),
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ),
+                                    ],
+                                                                         lineTouchData: LineTouchData(
+                                       enabled: true,
+                                       touchTooltipData: LineTouchTooltipData(
+                                         getTooltipColor: (touchedSpot) => Colors.white,
+                                         tooltipRoundedRadius: 8,
+                                         tooltipBorder: BorderSide(
+                                           color: const Color(0xFFE5E7EB),
+                                           width: 1,
+                                         ),
+                                        getTooltipItems: (touchedSpots) {
+                                          return touchedSpots.map((touchedSpot) {
+                                            final index = touchedSpot.x.toInt();
+                                            final spots = _getChartSpots(widget.meta);
+                                            if (index >= 0 && index < spots.length) {
+                                              final date = _getDateFromSpot(index, widget.meta);
+                                              return LineTooltipItem(
+                                                '${touchedSpot.y.toStringAsFixed(1)} ${widget.meta.tipo.unidade}\n',
+                                                TextStyle(
+                                                  color: isConcluida 
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFF3B82F6),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                                children: [
+                                                  TextSpan(
+                                                    text: DateFormat('dd/MM/yyyy HH:mm').format(date),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF6B7280),
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                            return null;
+                                          }).toList();
+                                        },
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Botão para mostrar/ocultar histórico
+                      if (meta.progressos.isNotEmpty)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _showHistorico = !_showHistorico;
+                                  });
+                                },
+                                icon: Icon(
+                                  _showHistorico ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                  color: const Color(0xFF3B82F6),
+                                ),
+                                label: Text(
+                                  _showHistorico ? 'Ocultar Histórico' : 'Ver Histórico Completo',
+                                  style: const TextStyle(
+                                    color: Color(0xFF3B82F6),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                      
+                      // Histórico expandível
+                      if (_showHistorico && meta.progressos.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Histórico Completo',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ...meta.progressos.map((progresso) {
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.trending_up,
+                                          color: Color(0xFF3B82F6),
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${progresso.valor.toStringAsFixed(1)} ${meta.tipo.unidade}',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF374151),
+                                              ),
+                                            ),
+                                            if (progresso.observacao != null)
+                                              Text(
+                                                progresso.observacao!,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Color(0xFF6B7280),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat('dd/MM/yyyy HH:mm').format(progresso.data),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
                           ),
                         ),
                       
@@ -300,6 +576,32 @@ class _MetaCardState extends State<MetaCard> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
+                
+                // Ícone de concluído no canto superior direito
+                if (isConcluida)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 
                 // Selo de concluída
                 if (isConcluida)
@@ -394,15 +696,80 @@ class _MetaCardState extends State<MetaCard> with TickerProviderStateMixin {
       ];
     }
 
+    // Ordenar progressos por data (mais antigo primeiro) para o gráfico
+    final progressosOrdenados = List<ProgressoMeta>.from(meta.progressos);
+    progressosOrdenados.sort((a, b) => a.data.compareTo(b.data));
+
     final spots = <FlSpot>[];
     spots.add(FlSpot(0, meta.valorInicial));
     
-    for (int i = 0; i < meta.progressos.length; i++) {
-      final progresso = meta.progressos[i];
-      final diasDesdeInicio = progresso.data.difference(meta.dataCriacao).inDays.toDouble();
-      spots.add(FlSpot(diasDesdeInicio, progresso.valor));
+    for (int i = 0; i < progressosOrdenados.length; i++) {
+      spots.add(FlSpot((i + 1).toDouble(), progressosOrdenados[i].valor));
     }
     
     return spots;
+  }
+
+  double _getMinY(Meta meta) {
+    if (meta.progressos.isEmpty) {
+      return meta.valorInicial * 0.9;
+    }
+    
+    final minValor = meta.progressos.map((p) => p.valor).reduce((a, b) => a < b ? a : b);
+    final minInicial = meta.valorInicial;
+    return (minValor < minInicial ? minValor : minInicial) * 0.9;
+  }
+
+  double _getMaxY(Meta meta) {
+    if (meta.progressos.isEmpty) {
+      return meta.valorInicial * 1.1;
+    }
+    
+    final maxValor = meta.progressos.map((p) => p.valor).reduce((a, b) => a > b ? a : b);
+    final maxDesejado = meta.valorDesejado;
+    final maxInicial = meta.valorInicial;
+    
+    final maxValue = [maxValor, maxDesejado, maxInicial].reduce((a, b) => a > b ? a : b);
+    return maxValue * 1.1;
+  }
+
+  double _getGridInterval(Meta meta) {
+    final range = _getMaxY(meta) - _getMinY(meta);
+    if (range <= 10) return 2;
+    if (range <= 50) return 5;
+    if (range <= 100) return 10;
+    return 20;
+  }
+
+  double _getLeftInterval(Meta meta) {
+    final range = _getMaxY(meta) - _getMinY(meta);
+    if (range <= 10) return 2;
+    if (range <= 50) return 5;
+    if (range <= 100) return 10;
+    return 20;
+  }
+
+  double _getBottomInterval(Meta meta) {
+    final spots = _getChartSpots(meta);
+    if (spots.length <= 5) return 1;
+    if (spots.length <= 10) return 2;
+    if (spots.length <= 20) return 3;
+    return 5;
+  }
+
+  DateTime _getDateFromSpot(int index, Meta meta) {
+    if (index == 0) {
+      return meta.dataCriacao;
+    }
+    
+    // Ordenar progressos por data (mais antigo primeiro) para o gráfico
+    final progressosOrdenados = List<ProgressoMeta>.from(meta.progressos);
+    progressosOrdenados.sort((a, b) => a.data.compareTo(b.data));
+    
+    if (index - 1 < progressosOrdenados.length) {
+      return progressosOrdenados[index - 1].data;
+    }
+    
+    return meta.dataCriacao;
   }
 } 

@@ -689,6 +689,16 @@ class _HistoricoPageState extends State<HistoricoPage> {
     });
   }
 
+  String _formatarTempoTotalMes(int minutos) {
+    if (minutos < 60) {
+      return '$minutos min';
+    } else {
+      final horas = minutos ~/ 60;
+      final mins = minutos % 60;
+      return mins > 0 ? '${horas}h ${mins}m' : '${horas}h';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -851,8 +861,7 @@ class _HistoricoPageState extends State<HistoricoPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             _buildMonthStat('Treinos', _getTreinosDoMes().length.toString(), Icons.fitness_center_outlined, const Color(0xFF3B82F6)),
-                            _buildMonthStat('Peso Total', '${_getPesoTotalDoMes().toStringAsFixed(0)} kg', Icons.monitor_weight_outlined, const Color(0xFF60A5FA)),
-                            _buildMonthStat('Tempo Total', '${_getTempoTotalDoMes()} min', Icons.timer_outlined, const Color(0xFF93C5FD)),
+                            _buildMonthStat('Tempo Total', _formatarTempoTotalMes(_getTempoTotalDoMes()), Icons.timer_outlined, const Color(0xFF93C5FD)),
                           ],
                         ),
                       ],

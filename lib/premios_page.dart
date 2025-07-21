@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'models/trofeu_animal.dart';
 
 class PremiosPage extends StatefulWidget {
   const PremiosPage({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class PremiosPage extends StatefulWidget {
 
 class _PremiosPageState extends State<PremiosPage> {
   List<Map<String, dynamic>> premios = [];
+  List<TrofeuConquistado> trofeusMetas = [];
   bool isLoading = true;
   int? usuarioId;
 
@@ -31,6 +33,7 @@ class _PremiosPageState extends State<PremiosPage> {
       
       if (id != null && id > 0) {
         await _carregarPremios(id);
+        await _carregarTrofeusMetas(id);
       }
     } catch (e) {
       print('Erro ao carregar usuarioId: $e');
@@ -53,6 +56,50 @@ class _PremiosPageState extends State<PremiosPage> {
         if (dados['sucesso'] == true) {
           setState(() {
             premios = List<Map<String, dynamic>>.from(dados['premios'] ?? []);
+          });
+        } else {
+          print('Erro na resposta: ${dados['erro']}');
+        }
+      } else {
+        print('Erro na requisição: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Erro ao carregar prêmios: $e');
+    }
+  }
+
+  Future<void> _carregarTrofeusMetas(int usuarioId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://airfit.online/api/salvar_premio_v2.php?usuario_id=$usuarioId'),
+      );
+
+      if (response.statusCode == 200) {
+        final dados = jsonDecode(response.body);
+        
+        if (dados['sucesso'] == true) {
+          final trofeus = <TrofeuConquistado>[];
+          
+          for (var premioData in dados['premios'] ?? []) {
+            // Filtrar apenas prêmios de metas
+            if (premioData['tipo_conquista'] == 'meta') {
+              // Criar objeto TrofeuAnimal a partir dos dados
+              final trofeu = TrofeuAnimal(
+                id: premioData['id'].toString(),
+                nome: premioData['nome_animal'],
+                emoji: premioData['emoji_animal'],
+                descricao: premioData['descricao_trofeu'] ?? '',
+                categoria: premioData['categoria_trofeu'] ?? 'Comum',
+                raridade: premioData['raridade_trofeu'] ?? 1,
+                mensagemMotivacional: premioData['mensagem_motivacional'] ?? '',
+              );
+              
+              trofeus.add(TrofeuConquistado.fromJson(premioData, trofeu));
+            }
+          }
+
+          setState(() {
+            trofeusMetas = trofeus;
             isLoading = false;
           });
         } else {
@@ -68,7 +115,7 @@ class _PremiosPageState extends State<PremiosPage> {
         });
       }
     } catch (e) {
-      print('Erro ao carregar prêmios: $e');
+      print('Erro ao carregar troféus: $e');
       setState(() {
         isLoading = false;
       });
@@ -123,9 +170,10 @@ class _PremiosPageState extends State<PremiosPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
+            onPressed: () async {
               if (usuarioId != null) {
-                _carregarPremios(usuarioId!);
+                await _carregarPremios(usuarioId!);
+                await _carregarTrofeusMetas(usuarioId!);
               }
             },
           ),
@@ -145,7 +193,7 @@ class _PremiosPageState extends State<PremiosPage> {
                   color: Color(0xFF3B82F6),
                 ),
               )
-            : premios.isEmpty
+            : (premios.isEmpty && trofeusMetas.isEmpty)
                 ? _buildEmptyState(isDark)
                 : _buildPremiosList(isDark),
       ),
@@ -253,7 +301,7 @@ class _PremiosPageState extends State<PremiosPage> {
               Expanded(
                 child: _buildStatCard(
                   '${premios.length}',
-                  'Prêmios\nConquistados',
+                  'Total\nConquistas',
                   Icons.emoji_events,
                   const Color(0xFF3B82F6),
                 ),
@@ -271,18 +319,265 @@ class _PremiosPageState extends State<PremiosPage> {
           ),
         ),
         
-        // Lista de prêmios
+        // Lista de conquistas
         Expanded(
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: premios.length,
-            itemBuilder: (context, index) {
-              final premio = premios[index];
-              return _buildPremioCard(premio, isDark);
-            },
+            children: [
+              // Seção de prêmios de treinos
+              if (premios.isNotEmpty) ...[
+                _buildSectionHeader('🎯 Prêmios de Treinos', premios.length),
+                const SizedBox(height: 12),
+                ...premios.map((premio) => _buildPremioCard(premio, isDark)).toList(),
+              ],
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, int count) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1F2937),
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF3B82F6).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF3B82F6),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTrofeuCard(TrofeuConquistado trofeu, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            trofeu.trofeu.corRaridade.withOpacity(0.1),
+            trofeu.trofeu.corRaridade.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: trofeu.trofeu.corRaridade.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: trofeu.trofeu.corRaridade.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: trofeu.trofeu.corRaridade.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            trofeu.trofeu.emoji,
+            style: const TextStyle(fontSize: 24),
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                trofeu.trofeu.nome,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: trofeu.trofeu.corRaridade.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                trofeu.trofeu.raridadeTexto,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: trofeu.trofeu.corRaridade,
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              'Meta: ${trofeu.nomeMeta}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              trofeu.trofeu.descricao,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatarData(trofeu.dataConquista.toIso8601String()),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF9CA3AF),
+              ),
+            ),
+          ],
+        ),
+        onTap: () => _mostrarDetalhesTrofeu(trofeu),
+      ),
+    );
+  }
+
+  void _mostrarDetalhesTrofeu(TrofeuConquistado trofeu) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                trofeu.trofeu.corRaridade.withOpacity(0.1),
+                trofeu.trofeu.corRaridade.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: trofeu.trofeu.corRaridade.withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                trofeu.trofeu.emoji,
+                style: const TextStyle(fontSize: 64),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                trofeu.trofeu.nome,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: trofeu.trofeu.corRaridade.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  trofeu.trofeu.raridadeTexto,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: trofeu.trofeu.corRaridade,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                trofeu.trofeu.descricao,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Meta: ${trofeu.nomeMeta}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _formatarData(trofeu.dataConquista.toIso8601String()),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: trofeu.trofeu.corRaridade,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Fechar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

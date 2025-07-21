@@ -124,9 +124,9 @@ function listarMetas($pdo) {
         
         // Buscar progressos para cada meta
         foreach ($metas as &$meta) {
-            $sql_progresso = "SELECT * FROM progresso_metas 
+            $sql_progresso = "SELECT valor, observacao, data_progresso FROM progresso_metas 
                              WHERE meta_id = :meta_id 
-                             ORDER BY data_progresso DESC";
+                             ORDER BY data_progresso DESC, id DESC";
             $stmt_progresso = $pdo->prepare($sql_progresso);
             $stmt_progresso->execute([':meta_id' => $meta['id']]);
             $meta['progressos'] = $stmt_progresso->fetchAll(PDO::FETCH_ASSOC);
@@ -176,7 +176,8 @@ function atualizarProgresso($pdo) {
 }
 
 function excluirMeta($pdo) {
-    $meta_id = $_GET['meta_id'] ?? null;
+    $data = json_decode(file_get_contents('php://input'), true);
+    $meta_id = $data['meta_id'] ?? null;
     
     if (!$meta_id) {
         echo json_encode(['erro' => 'ID da meta não fornecido']);

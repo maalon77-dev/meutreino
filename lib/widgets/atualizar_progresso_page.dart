@@ -5,10 +5,12 @@ import '../services/meta_service.dart';
 
 class AtualizarProgressoPage extends StatefulWidget {
   final Meta meta;
+  final int usuarioId;
 
   const AtualizarProgressoPage({
     super.key,
     required this.meta,
+    required this.usuarioId,
   });
 
   @override
@@ -20,11 +22,13 @@ class _AtualizarProgressoPageState extends State<AtualizarProgressoPage> {
   final _valorController = TextEditingController();
   final _observacaoController = TextEditingController();
   bool _isLoading = false;
+  Meta? _metaAtualizada;
 
   @override
   void initState() {
     super.initState();
-    _valorController.text = widget.meta.valorAtual.toString();
+    _metaAtualizada = widget.meta;
+    _carregarMetaAtualizada();
   }
 
   @override
@@ -32,6 +36,19 @@ class _AtualizarProgressoPageState extends State<AtualizarProgressoPage> {
     _valorController.dispose();
     _observacaoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _carregarMetaAtualizada() async {
+    try {
+      final metaAtualizada = await metaService.obterMetaPorId(widget.meta.id, widget.usuarioId);
+      if (metaAtualizada != null) {
+        setState(() {
+          _metaAtualizada = metaAtualizada;
+        });
+      }
+    } catch (e) {
+      print('Erro ao carregar meta atualizada: $e');
+    }
   }
 
   Future<void> _atualizarProgresso() async {
@@ -47,42 +64,139 @@ class _AtualizarProgressoPageState extends State<AtualizarProgressoPage> {
           ? null 
           : _observacaoController.text.trim();
 
+      // Verificar se a meta estava concluída antes da atualização
+      final metaAntes = _metaAtualizada ?? widget.meta;
+      final percentualAntes = metaAntes.percentualConclusao;
+      final estavaConcluida = percentualAntes >= 100;
+
+      print('📊 Percentual antes da atualização: ${percentualAntes.toStringAsFixed(1)}%');
+
       await metaService.adicionarProgresso(
         widget.meta.id,
         valor,
         observacao,
+        usuarioId: widget.usuarioId,
       );
 
+      // Recarregar a meta atualizada
+      await _carregarMetaAtualizada();
+
       if (mounted) {
+        // Verificar se a meta foi concluída agora
+        final metaDepois = _metaAtualizada ?? widget.meta;
+        final percentualDepois = metaDepois.percentualConclusao;
+        final foiConcluida = percentualDepois >= 100;
+
+        print('📊 Percentual depois da atualização: ${percentualDepois.toStringAsFixed(1)}%');
+
+        // Se a meta foi concluída agora (não estava antes), mostrar mensagem
+        if (foiConcluida && !estavaConcluida) {
+          print('🎉 Meta concluída!');
+          await _mostrarParabens();
+        } else if (foiConcluida && estavaConcluida) {
+          print('ℹ️ Meta já estava concluída');
+        } else {
+          print('📈 Meta ainda em progresso');
+        }
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        // Retornar true para indicar que houve atualização
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Progresso atualizado com sucesso! 📈'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao atualizar progresso: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
+      print('❌ Erro ao atualizar progresso: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao atualizar progresso: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
       }
     }
   }
 
+  Future<void> _mostrarParabens() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        content: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.celebration,
+                  size: 48,
+                  color: Color(0xFF10B981),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Parabéns! 🎉',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF10B981),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Você concluiu a meta:\n"${widget.meta.nome}"',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Continue assim! Sua dedicação está sendo recompensada!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Continuar',
+              style: TextStyle(
+                color: Color(0xFF10B981),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final meta = widget.meta;
+    final meta = _metaAtualizada ?? widget.meta;
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -96,195 +210,185 @@ class _AtualizarProgressoPageState extends State<AtualizarProgressoPage> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
-        ),
+        iconTheme: const IconThemeData(color: Color(0xFF1F2937)),
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Card da meta
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: _getTipoColor(meta.tipo).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            meta.tipo.icone,
-                            style: const TextStyle(fontSize: 24),
-                          ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Card da meta
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _getTipoColor(meta.tipo).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                meta.nome,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1F2937),
-                                ),
-                              ),
-                              Text(
-                                meta.tipo.nome,
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: Text(
+                          meta.tipo.icone,
+                          style: const TextStyle(fontSize: 24),
                         ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Progresso atual
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildProgressCard(
-                            'Inicial',
-                            '${meta.valorInicial.toStringAsFixed(1)} ${meta.tipo.unidade}',
-                            const Color(0xFF6B7280),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildProgressCard(
-                            'Atual',
-                            '${meta.valorAtual.toStringAsFixed(1)} ${meta.tipo.unidade}',
-                            const Color(0xFF3B82F6),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildProgressCard(
-                            'Meta',
-                            '${meta.valorDesejado.toStringAsFixed(1)} ${meta.tipo.unidade}',
-                            const Color(0xFF10B981),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Barra de progresso
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Progresso Atual',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF374151),
+                            Text(
+                              meta.nome,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1F2937),
                               ),
                             ),
                             Text(
-                              '${meta.percentualConclusao.toStringAsFixed(1)}%',
+                              meta.tipo.nome,
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF3B82F6),
+                                color: Color(0xFF6B7280),
+                                fontSize: 14,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                          value: meta.percentualConclusao / 100,
-                          backgroundColor: const Color(0xFFE5E7EB),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
-                          minHeight: 8,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Valores da meta
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildValueCard(
+                          'Inicial',
+                          '${meta.valorInicial.toStringAsFixed(1)} ${meta.tipo.unidade}',
+                          const Color(0xFF6B7280),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildValueCard(
+                          'Atual',
+                          '${meta.valorAtual.toStringAsFixed(1)} ${meta.tipo.unidade}',
+                          const Color(0xFF3B82F6),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildValueCard(
+                          'Meta',
+                          '${meta.valorDesejado.toStringAsFixed(1)} ${meta.tipo.unidade}',
+                          const Color(0xFF10B981),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Barra de progresso
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Progresso',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                          Text(
+                            '${meta.percentualConclusao.toStringAsFixed(1)}%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: meta.percentualConclusao / 100,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+                        minHeight: 8,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              
-              const SizedBox(height: 20),
-              
-              // Card de atualização
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Formulário de atualização
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Form(
+                key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Novo Valor',
+                      'Novo Progresso',
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
+                    
+                    // Campo de valor
                     TextFormField(
                       controller: _valorController,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
+                        labelText: 'Valor (${meta.tipo.unidade})',
                         hintText: 'Digite o novo valor',
-                        suffixText: meta.tipo.unidade,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
+                        prefixIcon: const Icon(Icons.trending_up),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Digite o novo valor';
+                          return 'Digite um valor';
                         }
                         if (double.tryParse(value) == null) {
                           return 'Digite um número válido';
@@ -295,172 +399,64 @@ class _AtualizarProgressoPageState extends State<AtualizarProgressoPage> {
                     
                     const SizedBox(height: 16),
                     
-                    const Text(
-                      'Observação (Opcional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    // Campo de observação
                     TextFormField(
                       controller: _observacaoController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        hintText: 'Ex: Treino intenso hoje, dieta seguida...',
+                        labelText: 'Observação (opcional)',
+                        hintText: 'Como foi seu progresso hoje?',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                        prefixIcon: const Icon(Icons.note),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Botão de atualizar
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _atualizarProgresso,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Atualizar Progresso',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 20),
-              
-              // Histórico de progresso
-              if (meta.progressos.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Histórico de Progresso',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF374151),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...meta.progressos.reversed.take(5).map((progresso) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.trending_up,
-                                  color: Color(0xFF3B82F6),
-                                  size: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${progresso.valor.toStringAsFixed(1)} ${meta.tipo.unidade}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF374151),
-                                      ),
-                                    ),
-                                    if (progresso.observacao != null)
-                                      Text(
-                                        progresso.observacao!,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                DateFormat('dd/MM/yyyy').format(progresso.data),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF6B7280),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-              
-              // Botão atualizar
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _atualizarProgresso,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'Atualizar Progresso',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressCard(String label, String value, Color color) {
+  Widget _buildValueCard(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

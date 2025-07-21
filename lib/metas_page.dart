@@ -49,13 +49,25 @@ class _MetasPageState extends State<MetasPage> with TickerProviderStateMixin {
       _isLoading = true;
     });
 
-    await metaService.initialize();
-    final metas = await metaService.obterTodasMetas(widget.usuarioId);
-    
-    setState(() {
-      _metas = metas;
-      _isLoading = false;
-    });
+    try {
+      await metaService.initialize();
+      final metas = await metaService.obterTodasMetas(widget.usuarioId);
+      
+      print('🔄 Metas carregadas na página: ${metas.length}');
+      for (var meta in metas) {
+        print('  - ${meta.nome}: ${meta.progressos.length} progressos, valor atual: ${meta.valorAtual}');
+      }
+      
+      setState(() {
+        _metas = metas;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Erro ao carregar metas: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _criarNovaMeta() async {
@@ -75,7 +87,10 @@ class _MetasPageState extends State<MetasPage> with TickerProviderStateMixin {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AtualizarProgressoPage(meta: meta),
+        builder: (context) => AtualizarProgressoPage(
+          meta: meta,
+          usuarioId: widget.usuarioId,
+        ),
       ),
     );
 
@@ -97,9 +112,31 @@ class _MetasPageState extends State<MetasPage> with TickerProviderStateMixin {
           ),
           TextButton(
             onPressed: () async {
-              await metaService.excluirMeta(meta.id);
-              Navigator.pop(context);
-              _carregarMetas();
+              try {
+                Navigator.pop(context);
+                await metaService.excluirMeta(meta.id);
+                _carregarMetas();
+                
+                // Mostrar mensagem de sucesso
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Meta "${meta.nome}" excluída com sucesso!'),
+                      backgroundColor: const Color(0xFF10B981),
+                    ),
+                  );
+                }
+              } catch (e) {
+                print('❌ Erro ao excluir meta: $e');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao excluir meta: $e'),
+                      backgroundColor: const Color(0xFFDC2626),
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
           ),

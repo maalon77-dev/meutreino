@@ -116,13 +116,13 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Card principal
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -174,7 +174,7 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                       },
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
                     // Tipo da meta
                     const Text(
@@ -190,16 +190,15 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 2.5,
+                        crossAxisCount: 3, // era 2, agora 3 colunas
+                        crossAxisSpacing: 8, // menos espaço
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 1.1, // mais compacto
                       ),
                       itemCount: TipoMeta.values.length,
                       itemBuilder: (context, index) {
                         final tipo = TipoMeta.values[index];
                         final isSelected = tipo == _tipoSelecionado;
-                        
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -211,7 +210,7 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                               color: isSelected 
                                   ? _getTipoColor(tipo).withOpacity(0.1)
                                   : const Color(0xFFF9FAFB),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: isSelected 
                                     ? _getTipoColor(tipo)
@@ -219,50 +218,42 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 12),
-                                Text(
-                                  tipo.icone,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        tipo.nome,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected 
-                                              ? _getTipoColor(tipo)
-                                              : const Color(0xFF374151),
-                                        ),
-                                      ),
-                                      Text(
-                                        tipo.descricao,
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isSelected 
-                                              ? _getTipoColor(tipo).withOpacity(0.8)
-                                              : const Color(0xFF6B7280),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0), // padding menor
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      tipo.icone,
+                                      style: const TextStyle(fontSize: 22), // menor
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    tipo.nome,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected 
+                                          ? _getTipoColor(tipo)
+                                          : const Color(0xFF374151),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
                       },
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
                     // Valores
                     Row(
@@ -284,8 +275,8 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                                 controller: _valorInicialController,
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
-                                  hintText: '0.0',
-                                  suffixText: _tipoSelecionado.unidade,
+                                  hintText: _tipoSelecionado == TipoMeta.frequencia ? 'vezes' : '0.0',
+                                  suffixText: _tipoSelecionado == TipoMeta.frequencia ? null : _tipoSelecionado.unidade,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -314,7 +305,7 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 20),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,8 +323,8 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                                 controller: _valorDesejadoController,
                                 keyboardType: TextInputType.number,
                                 decoration: InputDecoration(
-                                  hintText: '0.0',
-                                  suffixText: _tipoSelecionado.unidade,
+                                  hintText: _tipoSelecionado == TipoMeta.frequencia ? 'vezes' : '0.0',
+                                  suffixText: _tipoSelecionado == TipoMeta.frequencia ? null : _tipoSelecionado.unidade,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -365,7 +356,7 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                       ],
                     ),
                     
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     
                     // Prazo (opcional)
                     const Text(
@@ -424,7 +415,7 @@ class _CriarMetaPageState extends State<CriarMetaPage> {
                 ),
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               
               // Botão criar
               SizedBox(

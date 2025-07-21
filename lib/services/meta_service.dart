@@ -88,22 +88,25 @@ class MetaService {
             );
 
             // Adicionar progressos
+            final progressos = <ProgressoMeta>[];
             if (metaData['progressos'] != null) {
+              print('📊 Progressos encontrados para meta ${metaData['nome']}: ${metaData['progressos'].length}');
               for (var progressoData in metaData['progressos']) {
-                meta.adicionarProgresso(
-                  double.parse(progressoData['valor'].toString()),
-                  progressoData['observacao'],
+                final progresso = ProgressoMeta(
+                  valor: double.parse(progressoData['valor'].toString()),
+                  data: DateTime.parse(progressoData['data_progresso']),
+                  observacao: progressoData['observacao'],
                 );
+                progressos.add(progresso);
               }
             }
-
+            meta.progressos = progressos;
+            // Corrigir status de conclusão
+            meta.concluida = meta.estaConcluida;
             metas.add(meta);
           }
-
-          print('📋 Metas carregadas online: ${metas.length} encontradas');
-          for (var meta in metas) {
-            print('  - ${meta.nome} (${meta.tipo.nome}) - ${meta.concluida ? "Concluída" : "Ativa"}');
-          }
+          
+          print('✅ Metas carregadas online: ${metas.length} encontradas');
           return metas;
         } else {
           throw Exception(data['erro'] ?? 'Erro desconhecido');
@@ -113,42 +116,66 @@ class MetaService {
       }
     } catch (e) {
       print('❌ Erro ao carregar metas: $e');
-      return [];
+      rethrow;
     }
-  }
-
-  // Obter metas ativas (não concluídas)
-  Future<List<Meta>> obterMetasAtivas(int usuarioId) async {
-    final todas = await obterTodasMetas(usuarioId);
-    return todas.where((meta) => !meta.concluida).toList();
-  }
-
-  // Obter metas concluídas
-  Future<List<Meta>> obterMetasConcluidas(int usuarioId) async {
-    final todas = await obterTodasMetas(usuarioId);
-    return todas.where((meta) => meta.concluida).toList();
   }
 
   // Obter meta por ID
   Future<Meta?> obterMetaPorId(String id, int usuarioId) async {
-    final todas = await obterTodasMetas(usuarioId);
     try {
-      return todas.firstWhere((meta) => meta.id == id);
+      final response = await http.get(
+        Uri.parse('$_baseUrl?acao=obter_meta&meta_id=$id&usuario_id=$usuarioId'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['sucesso'] == true && data['meta'] != null) {
+          final metaData = data['meta'];
+          final meta = Meta(
+            id: metaData['id'],
+            nome: metaData['nome'],
+            tipo: TipoMeta.values.firstWhere((e) => e.name == metaData['tipo']),
+            valorInicial: double.parse(metaData['valor_inicial'].toString()),
+            valorDesejado: double.parse(metaData['valor_desejado'].toString()),
+            prazo: metaData['prazo'] != null ? DateTime.parse(metaData['prazo']) : null,
+            dataCriacao: DateTime.parse(metaData['data_criacao']),
+            concluida: metaData['concluida'] == 1,
+          );
+
+          // Adicionar progressos
+          final progressos = <ProgressoMeta>[];
+          if (metaData['progressos'] != null) {
+            for (var progressoData in metaData['progressos']) {
+              final progresso = ProgressoMeta(
+                valor: double.parse(progressoData['valor'].toString()),
+                data: DateTime.parse(progressoData['data_progresso']),
+                observacao: progressoData['observacao'],
+              );
+              progressos.add(progresso);
+            }
+          }
+          meta.progressos = progressos;
+          
+          return meta;
+        }
+      }
+      return null;
     } catch (e) {
+      print('❌ Erro ao obter meta por ID: $e');
       return null;
     }
   }
 
-  // Atualizar meta
-  Future<void> atualizarMeta(Meta meta, int usuarioId) async {
-    // Para atualizar uma meta, precisamos recriar ela
-    // Isso é uma limitação da API atual
-    print('⚠️ Atualização de meta não implementada na API');
-  }
-
-  // Adicionar progresso a uma meta
-  Future<void> adicionarProgresso(String metaId, double valor, String? observacao) async {
+  // Adicionar progresso
+  Future<void> adicionarProgresso(
+    String metaId,
+    double valor,
+    String? observacao, {
+    required int usuarioId,
+  }) async {
     try {
+      print('📊 Adicionando progresso para meta: $metaId - Valor: $valor');
+      
       final response = await http.post(
         Uri.parse('$_baseUrl?acao=atualizar_progresso'),
         headers: {'Content-Type': 'application/json'},
@@ -162,7 +189,10 @@ class MetaService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['sucesso'] == true) {
-          print('✅ Progresso salvo online: Meta $metaId - Valor: $valor');
+          print('✅ Progresso salvo online: $valor');
+          
+          // Verificar se a meta foi concluída
+          await _verificarConclusao(metaId, usuarioId);
         } else {
           throw Exception(data['erro'] ?? 'Erro desconhecido');
         }
@@ -175,21 +205,49 @@ class MetaService {
     }
   }
 
+  // Verificar se a meta foi concluída
+  Future<void> _verificarConclusao(String metaId, int usuarioId) async {
+    try {
+      // Obter a meta atualizada
+      final meta = await obterMetaPorId(metaId, usuarioId);
+      if (meta != null && meta.estaConcluida && !meta.concluida) {
+        // Marcar como concluída
+        await marcarComoConcluida(metaId);
+        print('🎉 Meta concluída: ${meta.nome}');
+      }
+    } catch (e) {
+      print('❌ Erro ao verificar conclusão: $e');
+    }
+  }
+
   // Excluir meta
   Future<void> excluirMeta(String id) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$_baseUrl?acao=excluir_meta&meta_id=$id'),
+      print('🗑️ Tentando excluir meta: $id');
+      
+      // Usar POST em vez de DELETE para maior compatibilidade
+      final response = await http.post(
+        Uri.parse('$_baseUrl?acao=excluir_meta'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'meta_id': id,
+        }),
       );
+
+      print('📡 Status da resposta: ${response.statusCode}');
+      print('📄 Corpo da resposta: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['sucesso'] == true) {
           print('✅ Meta excluída online: $id');
         } else {
-          throw Exception(data['erro'] ?? 'Erro desconhecido');
+          final erro = data['erro'] ?? 'Erro desconhecido';
+          print('❌ Erro na resposta: $erro');
+          throw Exception(erro);
         }
       } else {
+        print('❌ Erro HTTP: ${response.statusCode}');
         throw Exception('Erro HTTP: ${response.statusCode}');
       }
     } catch (e) {

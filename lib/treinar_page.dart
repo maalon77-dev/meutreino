@@ -477,43 +477,82 @@ class _TreinarPageState extends State<TreinarPage> {
     return GestureDetector(
       onTap: () => _abrirExerciciosTreino(context, treino),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
           border: Border.all(
             color: const Color(0xFFE5E7EB),
             width: 1,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              nomeTreino,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: const Color(0xFF374151),
-                fontWeight: FontWeight.w600,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.fitness_center,
+                size: 32,
+                color: Color(0xFF3B82F6),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.fitness_center,
-                  size: 16,
-                  color: const Color(0xFF6B7280),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Exercícios: ${treino['total_exercicios'] ?? 0}',
-                  style: TextStyle(
-                    color: const Color(0xFF6B7280),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nomeTreino,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFF1F2937),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.list_alt, size: 16, color: Color(0xFF3B82F6)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${treino['total_exercicios'] ?? 0} exercícios',
+                              style: const TextStyle(
+                                color: Color(0xFF3B82F6),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 12),
+            const Icon(Icons.chevron_right, color: Color(0xFF94A3B8), size: 28),
           ],
         ),
       ),

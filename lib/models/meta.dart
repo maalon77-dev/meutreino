@@ -24,10 +24,6 @@ class Meta {
   double get percentualConclusao {
     if (valorDesejado == valorInicial) return 0.0;
     
-    double valorAtual = progressos.isNotEmpty 
-        ? progressos.last.valor 
-        : valorInicial;
-    
     double diferenca = valorDesejado - valorInicial;
     double progresso = valorAtual - valorInicial;
     
@@ -38,9 +34,15 @@ class Meta {
   }
 
   double get valorAtual {
-    return progressos.isNotEmpty 
-        ? progressos.last.valor 
-        : valorInicial;
+    if (progressos.isEmpty) {
+      return valorInicial;
+    }
+    
+    // Ordenar progressos por data para garantir que o último seja o mais recente
+    final progressosOrdenados = List<ProgressoMeta>.from(progressos);
+    progressosOrdenados.sort((a, b) => a.data.compareTo(b.data));
+    
+    return progressosOrdenados.last.valor;
   }
 
   bool get estaConcluida {
@@ -59,6 +61,20 @@ class Meta {
       data: DateTime.now(),
       observacao: observacao,
     ));
+    
+    // Verificar se a meta foi concluída
+    if (estaConcluida && !concluida) {
+      concluida = true;
+    }
+  }
+
+  // Método para atualizar progressos vindos do banco
+  void atualizarProgressos(List<ProgressoMeta> novosProgressos) {
+    progressos.clear();
+    progressos.addAll(novosProgressos);
+    
+    // Ordenar progressos por data (mais recente primeiro)
+    progressos.sort((a, b) => b.data.compareTo(a.data));
     
     // Verificar se a meta foi concluída
     if (estaConcluida && !concluida) {
@@ -114,17 +130,17 @@ extension TipoMetaExtension on TipoMeta {
   String get icone {
     switch (this) {
       case TipoMeta.peso:
-        return 'Peso';
+        return '⚖️'; // Ícone alterado para balança
       case TipoMeta.distancia:
-        return 'Distância';
+        return '🏃';
       case TipoMeta.repeticoes:
-        return 'Repetições';
+        return '💪';
       case TipoMeta.frequencia:
-        return 'Frequência';
+        return '📅';
       case TipoMeta.carga:
-        return 'Carga';
+        return '🏋️';
       case TipoMeta.medidas:
-        return 'Medidas';
+        return '📏';
     }
   }
 
