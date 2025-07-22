@@ -18,7 +18,7 @@ try {
     }
     
     // Definir charset
-    $mysqli->set_charset('utf8');
+    $mysqli->set_charset('utf8mb4');
     
     // Preparar consulta para buscar categorias únicas
     $stmt = $mysqli->prepare("SELECT DISTINCT categoria FROM exercicios_admin WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria");

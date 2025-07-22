@@ -1,5 +1,5 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
 $id_treino = intval($_REQUEST['id_treino'] ?? 0);
@@ -10,6 +10,9 @@ if ($id_treino === 0) {
 }
 
 $conn = new mysqli('academia3322.mysql.dbaas.com.br', 'academia3322', 'vida1503A@', 'academia3322');
+
+// Configurar charset para UTF-8
+$conn->set_charset("utf8mb4");
 
 if ($conn->connect_error) {
     echo json_encode(['erro' => 'Conexão falhou: ' . $conn->connect_error]);
@@ -29,6 +32,6 @@ while ($row = $result->fetch_assoc()) {
     $dados[] = $row;
 }
 
-echo json_encode($dados);
+echo json_encode($dados, JSON_UNESCAPED_UNICODE);
 $conn->close();
 ?> 

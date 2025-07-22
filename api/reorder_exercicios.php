@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Definir charset
-        $mysqli->set_charset('utf8');
+        $mysqli->set_charset('utf8mb4');
         
         // Iniciar transação
         $mysqli->autocommit(FALSE);

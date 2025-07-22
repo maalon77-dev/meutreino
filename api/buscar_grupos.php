@@ -20,7 +20,7 @@ try {
     if ($mysqli->connect_error) {
         throw new Exception('Erro de conexão: ' . $mysqli->connect_error);
     }
-    $mysqli->set_charset('utf8');
+    $mysqli->set_charset('utf8mb4');
     $stmt = $mysqli->prepare("SELECT DISTINCT grupo FROM exercicios_admin WHERE categoria = ? AND grupo IS NOT NULL AND grupo != '' ORDER BY grupo");
     if (!$stmt) {
         throw new Exception('Erro ao preparar consulta: ' . $mysqli->error);

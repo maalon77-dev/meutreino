@@ -34,7 +34,7 @@ try {
     }
     
     // Definir charset
-    $mysqli->set_charset('utf8');
+    $mysqli->set_charset('utf8mb4');
     
     // Preparar consulta baseada na presença do user_id
     if ($user_id > 0) {

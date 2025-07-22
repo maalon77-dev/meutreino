@@ -3673,11 +3673,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                mainAxisSize: MainAxisSize.min,
                children: [
                  _buildStatRow(
-                   icon: Icons.straighten,
+                   icon: Icons.place,
                    iconColor: Colors.white,
                    backgroundColor: const Color(0xFF2A2A2A),
                    label: 'Distância',
-                   value: '${exercicio['peso'] ?? 0}km',
+                   value: '${exercicio['distancia'] ?? 0}km',
                  ),
                  const SizedBox(width: 8),
                  _buildStatRow(
@@ -3943,7 +3943,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
 
      Widget _buildCardioInterface(Map<String, dynamic> exercicio) {
        final duracao = exercicio['tempo_descanso']?.toString() ?? '0'; // Usando tempo_descanso como duração
-       final intensidade = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final distancia = exercicio['distancia']?.toString() ?? '0';
        
        return Container(
          padding: const EdgeInsets.all(16),
@@ -3964,12 +3964,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                ),
              ),
              const SizedBox(height: 12),
-             // Cardio só tem duração e intensidade (sem séries, reps ou peso)
+             // Cardio tem duração e distância
              Row(
                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                children: [
                  _buildInfoCard('DURAÇÃO', '${duracao} min', Icons.timer, const Color(0xFFF59E0B)),
-                 _buildInfoCard('INTENSIDADE', '$intensidade/10', Icons.speed, const Color(0xFFF59E0B)),
+                 _buildInfoCard('DISTÂNCIA', '${distancia}km', Icons.place, const Color(0xFFF59E0B)),
                ],
              ),
            ],

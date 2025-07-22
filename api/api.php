@@ -19,6 +19,9 @@ $db = 'academia3322';
 // Conectar ao banco
 $conn = new mysqli($host, $user, $pass, $db);
 
+// Configurar charset para UTF-8
+$conn->set_charset("utf8mb4");
+
 // Verificar conexão
 if ($conn->connect_error) {
     echo json_encode(['erro' => 'Erro de conexão: ' . $conn->connect_error]);

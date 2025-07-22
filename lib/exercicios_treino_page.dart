@@ -609,14 +609,14 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
     return editado == true || editado == 1 || editado == '1';
   }
 
-  String _getDescricaoCategoria(String categoria, String peso, String repeticoes, String series, String tempoDescanso) {
+  String _getDescricaoCategoria(String categoria, String peso, String repeticoes, String series, String tempoDescanso, {String? distancia}) {
     switch (categoria) {
       case 'Com Pesos (Musculação)':
         return '$series séries • $repeticoes reps • ${peso}kg • ${tempoDescanso}s descanso';
       case 'Peso Corporal (Calistenia)':
         return '$series séries • $repeticoes repetições • ${tempoDescanso}s descanso';
       case 'Cardio / Corrida':
-        return '${tempoDescanso} min • Intensidade $repeticoes/10';
+        return '${tempoDescanso} min • ${distancia ?? '0'}km';
       case 'Funcional':
         return '$series séries • $repeticoes reps/tempo • ${tempoDescanso}s descanso';
       case 'Alongamento / Mobilidade':
@@ -1075,7 +1075,14 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                     Text(
                                       !editado 
                                           ? 'Configure os dados do exercício antes de iniciar o treino'
-                                          : _getDescricaoCategoria(categoria, peso, repeticoes, series, tempoDescanso),
+                                          : _getDescricaoCategoria(
+                                              categoria, 
+                                              peso, 
+                                              repeticoes, 
+                                              series, 
+                                              tempoDescanso,
+                                              distancia: categoria == 'Cardio / Corrida' ? exercicio['distancia']?.toString() : null,
+                                            ),
                                       style: TextStyle(
                                         color: !editado ? const Color(0xFFEF4444) : Colors.grey[600],
                                         fontSize: 12,
@@ -1546,21 +1553,31 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormMusculacao() {
-    final pesoController = TextEditingController(text: widget.exercicio['peso']?.toString() ?? '');
-    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final pesoController = TextEditingController();
+    final repController = TextEditingController();
+    final seriesController = TextEditingController();
+    final descansoController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Peso (kg)', pesoController, 'peso'),
+              child: _buildTextField(
+                'Peso (kg)', 
+                pesoController, 
+                'peso',
+                placeholder: widget.exercicio['peso']?.toString() ?? '0',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Repetições', 
+                repController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '10',
+              ),
             ),
           ],
         ),
@@ -1568,11 +1585,21 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Séries', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Séries', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+              child: _buildTextField(
+                'Descanso (s)', 
+                descansoController, 
+                'tempo_descanso',
+                placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '60',
+              ),
             ),
           ],
         ),
@@ -1588,25 +1615,40 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormCalistenia() {
-    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final repController = TextEditingController();
+    final seriesController = TextEditingController();
+    final descansoController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Repetições', 
+                repController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '10',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Séries', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Séries', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
           ],
         ),
         SizedBox(height: 16),
-        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        _buildTextField(
+          'Descanso (s)', 
+          descansoController, 
+          'tempo_descanso',
+          placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '60',
+        ),
         SizedBox(height: 24),
         _buildBotoesSalvar({
           'peso': TextEditingController(text: '0'),
@@ -1619,45 +1661,71 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormCardio() {
-    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
-    final intensidadeController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final duracaoController = TextEditingController();
+    final distanciaController = TextEditingController();
 
     return Column(
       children: [
-        _buildTextField('Duração (min)', duracaoController, 'tempo_descanso'),
+        _buildTextField(
+          'Duração (min)', 
+          duracaoController, 
+          'tempo_descanso',
+          placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '30',
+        ),
         SizedBox(height: 16),
-        _buildTextField('Intensidade (1-10)', intensidadeController, 'numero_repeticoes'),
+        _buildTextField(
+          'Distância (km)', 
+          distanciaController, 
+          'distancia',
+          placeholder: widget.exercicio['distancia']?.toString() ?? '5',
+        ),
         SizedBox(height: 24),
         _buildBotoesSalvar({
           'peso': TextEditingController(text: '0'),
-          'numero_repeticoes': intensidadeController,
+          'numero_repeticoes': TextEditingController(text: '1'),
           'numero_series': TextEditingController(text: '1'),
           'tempo_descanso': duracaoController,
+          'distancia': distanciaController,
         }),
       ],
     );
   }
 
   Widget _buildFormFuncional() {
-    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final repController = TextEditingController();
+    final seriesController = TextEditingController();
+    final descansoController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Repetições/Tempo', repController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Repetições/Tempo', 
+                repController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '10',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Séries', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Séries', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
           ],
         ),
         SizedBox(height: 16),
-        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        _buildTextField(
+          'Descanso (s)', 
+          descansoController, 
+          'tempo_descanso',
+          placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '60',
+        ),
         SizedBox(height: 24),
         _buildBotoesSalvar({
           'peso': TextEditingController(text: '0'),
@@ -1670,19 +1738,29 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormAlongamento() {
-    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final duracaoController = TextEditingController();
+    final seriesController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Duração (s)', duracaoController, 'tempo_descanso'),
+              child: _buildTextField(
+                'Duração (s)', 
+                duracaoController, 
+                'tempo_descanso',
+                placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '30',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Repetições', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Repetições', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
           ],
         ),
@@ -1698,25 +1776,40 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormHIIT() {
-    final trabalhoController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
-    final roundsController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final trabalhoController = TextEditingController();
+    final descansoController = TextEditingController();
+    final roundsController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Trabalho (s)', trabalhoController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Trabalho (s)', 
+                trabalhoController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '30',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+              child: _buildTextField(
+                'Descanso (s)', 
+                descansoController, 
+                'tempo_descanso',
+                placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '15',
+              ),
             ),
           ],
         ),
         SizedBox(height: 16),
-        _buildTextField('Rounds', roundsController, 'numero_series'),
+        _buildTextField(
+          'Rounds', 
+          roundsController, 
+          'numero_series',
+          placeholder: widget.exercicio['numero_series']?.toString() ?? '5',
+        ),
         SizedBox(height: 24),
         _buildBotoesSalvar({
           'peso': TextEditingController(text: '0'),
@@ -1729,25 +1822,40 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormIsometria() {
-    final duracaoController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final duracaoController = TextEditingController();
+    final seriesController = TextEditingController();
+    final descansoController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Duração (s)', duracaoController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Duração (s)', 
+                duracaoController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '30',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Séries', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Séries', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
           ],
         ),
         SizedBox(height: 16),
-        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        _buildTextField(
+          'Descanso (s)', 
+          descansoController, 
+          'tempo_descanso',
+          placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '60',
+        ),
         SizedBox(height: 24),
         _buildBotoesSalvar({
           'peso': TextEditingController(text: '0'),
@@ -1760,21 +1868,31 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormGenerico() {
-    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
-    final pesoController = TextEditingController(text: widget.exercicio['peso']?.toString() ?? '');
-    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final repController = TextEditingController();
+    final pesoController = TextEditingController();
+    final seriesController = TextEditingController();
+    final descansoController = TextEditingController();
 
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+              child: _buildTextField(
+                'Repetições', 
+                repController, 
+                'numero_repeticoes',
+                placeholder: widget.exercicio['numero_repeticoes']?.toString() ?? '10',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Peso', pesoController, 'peso'),
+              child: _buildTextField(
+                'Peso', 
+                pesoController, 
+                'peso',
+                placeholder: widget.exercicio['peso']?.toString() ?? '0',
+              ),
             ),
           ],
         ),
@@ -1782,11 +1900,21 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
         Row(
           children: [
             Expanded(
-              child: _buildTextField('Séries', seriesController, 'numero_series'),
+              child: _buildTextField(
+                'Séries', 
+                seriesController, 
+                'numero_series',
+                placeholder: widget.exercicio['numero_series']?.toString() ?? '3',
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+              child: _buildTextField(
+                'Descanso (s)', 
+                descansoController, 
+                'tempo_descanso',
+                placeholder: widget.exercicio['tempo_descanso']?.toString() ?? '60',
+              ),
             ),
           ],
         ),
@@ -1801,7 +1929,7 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String field) {
+  Widget _buildTextField(String label, TextEditingController controller, String field, {String? placeholder}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1829,6 +1957,11 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
             ),
             filled: true,
             fillColor: Colors.grey.shade50,
+            hintText: placeholder,
+            hintStyle: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
           ),
         ),
       ],
@@ -1887,19 +2020,27 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
       // Obter o nome da categoria selecionada
       final categoriaNome = categorias.firstWhere((c) => c['id'] == categoriaSelecionada)['nome'];
       
+      // Preparar dados para envio
+      final dados = {
+        'tabela': 'exercicios',
+        'acao': 'atualizar',
+        'id': widget.exercicio['id'].toString(),
+        'numero_repeticoes': controllers['numero_repeticoes']!.text,
+        'peso': controllers['peso']!.text,
+        'numero_series': controllers['numero_series']!.text,
+        'tempo_descanso': controllers['tempo_descanso']!.text,
+        'categoria': categoriaNome, // Salvar a categoria selecionada
+        'editado': '1', // Marcar como editado no banco de dados
+      };
+      
+      // Adicionar distância se existir
+      if (controllers.containsKey('distancia')) {
+        dados['distancia'] = controllers['distancia']!.text;
+      }
+      
       final response = await http.post(
         Uri.parse('https://airfit.online/api/api.php'),
-        body: {
-          'tabela': 'exercicios',
-          'acao': 'atualizar',
-          'id': widget.exercicio['id'].toString(),
-          'numero_repeticoes': controllers['numero_repeticoes']!.text,
-          'peso': controllers['peso']!.text,
-          'numero_series': controllers['numero_series']!.text,
-          'tempo_descanso': controllers['tempo_descanso']!.text,
-          'categoria': categoriaNome, // Salvar a categoria selecionada
-          'editado': '1', // Marcar como editado no banco de dados
-        },
+        body: dados,
       );
       
       final data = jsonDecode(response.body);
@@ -1907,14 +2048,21 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
         Navigator.of(context).pop();
         
         // Atualizar dados locais
-        widget.onSave({
+        final dadosLocais = {
           'numero_repeticoes': controllers['numero_repeticoes']!.text,
           'peso': controllers['peso']!.text,
           'numero_series': controllers['numero_series']!.text,
           'tempo_descanso': controllers['tempo_descanso']!.text,
           'categoria': categoriaNome,
           'editado': true, // Marcar como editado
-        });
+        };
+        
+        // Adicionar distância se existir
+        if (controllers.containsKey('distancia')) {
+          dadosLocais['distancia'] = controllers['distancia']!.text;
+        }
+        
+        widget.onSave(dadosLocais);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

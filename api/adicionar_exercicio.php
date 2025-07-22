@@ -18,7 +18,7 @@ try {
     }
     
     // Definir charset
-    $mysqli->set_charset('utf8');
+    $mysqli->set_charset('utf8mb4');
     
     // Pegar dados do POST
     $id_treino = intval($_POST['id_treino'] ?? 0);
