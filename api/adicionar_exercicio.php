@@ -5,7 +5,7 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 // Configuração de erro
-error_reporting(E_ALL);
+error_reporting(0);
 ini_set('display_errors', 0);
 
 try {
@@ -22,6 +22,7 @@ try {
     
     // Pegar dados do POST
     $id_treino = intval($_POST['id_treino'] ?? 0);
+    $user_id = intval($_POST['user_id'] ?? 0);
     $nome_exercicio = $_POST['nome_exercicio'] ?? '';
     $foto_exercicio = $_POST['foto_exercicio'] ?? '';
     $numero_repeticoes = $_POST['numero_repeticoes'] ?? '10';
@@ -30,26 +31,29 @@ try {
     $tempo_descanso = $_POST['tempo_descanso'] ?? '60';
     $ordem = intval($_POST['ordem'] ?? 1);
     
-    // Debug: mostrar dados recebidos
-    error_log("Dados recebidos: " . json_encode($_POST));
+    // Debug removido para evitar problemas
     
     // Validar dados obrigatórios
     if ($id_treino <= 0) {
         throw new Exception('ID do treino é obrigatório');
     }
     
+    if ($user_id <= 0) {
+        throw new Exception('ID do usuário é obrigatório');
+    }
+    
     if (empty($nome_exercicio)) {
         throw new Exception('Nome do exercício é obrigatório');
     }
     
-    // Preparar consulta
-    $stmt = $mysqli->prepare("INSERT INTO exercicios (id_treino, nome_do_exercicio, foto_gif, numero_repeticoes, peso, numero_series, tempo_descanso, ordem) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    // Preparar consulta (adicionando campo 'editado' como 0 = não editado)
+    $stmt = $mysqli->prepare("INSERT INTO exercicios (id_treino, user_id, nome_do_exercicio, foto_gif, numero_repeticoes, peso, numero_series, tempo_descanso, ordem, editado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
     if (!$stmt) {
         throw new Exception('Erro ao preparar consulta: ' . $mysqli->error);
     }
     
     // Executar consulta
-    $stmt->bind_param('issssssi', $id_treino, $nome_exercicio, $foto_exercicio, $numero_repeticoes, $peso, $numero_series, $tempo_descanso, $ordem);
+    $stmt->bind_param('iissssssi', $id_treino, $user_id, $nome_exercicio, $foto_exercicio, $numero_repeticoes, $peso, $numero_series, $tempo_descanso, $ordem);
     if (!$stmt->execute()) {
         throw new Exception('Erro ao executar consulta: ' . $stmt->error);
     }

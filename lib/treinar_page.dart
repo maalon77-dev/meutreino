@@ -2494,7 +2494,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                                       const SizedBox(height: 28),
                                       
                                       // Painel de controle
-                                      _buildFuturisticControlPanel(false),
+                                      _buildFuturisticControlPanel(false, ex),
                                     ],
                                   ),
                                 ),
@@ -3704,9 +3704,377 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     );
   }
 
-     Widget _buildFuturisticControlPanel(bool isDark) {
+     // Interfaces específicas por categoria
+     Widget _buildMusculacaoInterface(Map<String, dynamic> exercicio) {
+       final peso = exercicio['peso']?.toString() ?? '0';
+       final reps = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final series = exercicio['numero_series']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFF3B82F6).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'MUSCULAÇÃO',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFF3B82F6),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Musculação: peso, repetições e séries (com descanso implícito)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('PESO', '${peso}kg', Icons.fitness_center, const Color(0xFF3B82F6)),
+                 _buildInfoCard('REPS', reps, Icons.repeat, const Color(0xFF3B82F6)),
+                 _buildInfoCard('SÉRIE', '$serieAtual/$series', Icons.format_list_numbered, const Color(0xFF3B82F6)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildCalisteniaInterface(Map<String, dynamic> exercicio) {
+       final reps = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final series = exercicio['numero_series']?.toString() ?? '0';
+       final descanso = exercicio['tempo_descanso']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFF10B981).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'PESO CORPORAL (CALISTENIA)',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFF10B981),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Calistenia: repetições, séries e descanso (sem peso)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('REPETIÇÕES', reps, Icons.accessibility_new, const Color(0xFF10B981)),
+                 _buildInfoCard('SÉRIE', '$serieAtual/$series', Icons.format_list_numbered, const Color(0xFF10B981)),
+                 _buildInfoCard('DESCANSO', '${descanso}s', Icons.timer, const Color(0xFF10B981)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildCardioInterface(Map<String, dynamic> exercicio) {
+       final duracao = exercicio['tempo_descanso']?.toString() ?? '0'; // Usando tempo_descanso como duração
+       final intensidade = exercicio['numero_repeticoes']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFFF59E0B).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'CARDIO / CORRIDA',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFFF59E0B),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Cardio só tem duração e intensidade (sem séries, reps ou peso)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+               children: [
+                 _buildInfoCard('DURAÇÃO', '${duracao} min', Icons.timer, const Color(0xFFF59E0B)),
+                 _buildInfoCard('INTENSIDADE', '$intensidade/10', Icons.speed, const Color(0xFFF59E0B)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildHIITInterface(Map<String, dynamic> exercicio) {
+       final trabalho = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final descanso = exercicio['tempo_descanso']?.toString() ?? '0';
+       final rounds = exercicio['numero_series']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFFEF4444).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'HIIT / ALTA INTENSIDADE',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFFEF4444),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('TRABALHO', '${trabalho}s', Icons.whatshot, const Color(0xFFEF4444)),
+                 _buildInfoCard('DESCANSO', '${descanso}s', Icons.pause, const Color(0xFFEF4444)),
+                 _buildInfoCard('ROUND', '$serieAtual/$rounds', Icons.repeat, const Color(0xFFEF4444)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildIsometriaInterface(Map<String, dynamic> exercicio) {
+       final duracao = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final series = exercicio['numero_series']?.toString() ?? '0';
+       final descanso = exercicio['tempo_descanso']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFF6B7280).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFF6B7280).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'ISOMETRIA',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFF6B7280),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Isometria: duração, séries e descanso (sem repetições ou peso)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('DURAÇÃO', '${duracao}s', Icons.pause_circle_filled, const Color(0xFF6B7280)),
+                 _buildInfoCard('SÉRIE', '$serieAtual/$series', Icons.format_list_numbered, const Color(0xFF6B7280)),
+                 _buildInfoCard('DESCANSO', '${descanso}s', Icons.timer, const Color(0xFF6B7280)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildFuncionalInterface(Map<String, dynamic> exercicio) {
+       final reps = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final series = exercicio['numero_series']?.toString() ?? '0';
+       final descanso = exercicio['tempo_descanso']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFF8B5CF6).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'FUNCIONAL',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFF8B5CF6),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Funcional: repetições/tempo, séries e descanso (sem peso)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('REPS/TEMPO', reps, Icons.sports_gymnastics, const Color(0xFF8B5CF6)),
+                 _buildInfoCard('SÉRIE', '$serieAtual/$series', Icons.format_list_numbered, const Color(0xFF8B5CF6)),
+                 _buildInfoCard('DESCANSO', '${descanso}s', Icons.timer, const Color(0xFF8B5CF6)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildAlongamentoInterface(Map<String, dynamic> exercicio) {
+       final duracao = exercicio['tempo_descanso']?.toString() ?? '0';
+       final repeticoes = exercicio['numero_series']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: const Color(0xFF06B6D4).withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'ALONGAMENTO / MOBILIDADE',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: const Color(0xFF06B6D4),
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             // Alongamento só tem duração e repetições (sem peso ou séries)
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+               children: [
+                 _buildInfoCard('DURAÇÃO', '${duracao}s', Icons.timer, const Color(0xFF06B6D4)),
+                 _buildInfoCard('REPETIÇÕES', repeticoes, Icons.repeat, const Color(0xFF06B6D4)),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildGenericoInterface(Map<String, dynamic> exercicio) {
+       final reps = exercicio['numero_repeticoes']?.toString() ?? '0';
+       final peso = exercicio['peso']?.toString() ?? '0';
+       final series = exercicio['numero_series']?.toString() ?? '0';
+       
+       return Container(
+         padding: const EdgeInsets.all(16),
+         decoration: BoxDecoration(
+           color: Colors.grey.withOpacity(0.1),
+           borderRadius: BorderRadius.circular(12),
+           border: Border.all(color: Colors.grey.withOpacity(0.3)),
+         ),
+         child: Column(
+           children: [
+             Text(
+               'EXERCÍCIO',
+               style: TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+                 color: Colors.grey[700],
+                 letterSpacing: 1,
+               ),
+             ),
+             const SizedBox(height: 12),
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceAround,
+               children: [
+                 _buildInfoCard('REPS', reps, Icons.repeat, Colors.grey[700]!),
+                 _buildInfoCard('PESO', '${peso}kg', Icons.fitness_center, Colors.grey[700]!),
+                 _buildInfoCard('SÉRIE', '$serieAtual/$series', Icons.format_list_numbered, Colors.grey[700]!),
+               ],
+             ),
+           ],
+         ),
+       );
+     }
+
+     Widget _buildInfoCard(String label, String value, IconData? icon, Color color) {
      return Column(
        children: [
+           if (icon != null)
+             Icon(icon, color: color, size: 20)
+           else
+             Text(value, style: TextStyle(fontSize: 16)),
+           const SizedBox(height: 4),
+           Text(
+             label,
+             style: TextStyle(
+               fontSize: 10,
+               fontWeight: FontWeight.bold,
+               color: color,
+             ),
+           ),
+           if (icon != null) ...[
+             const SizedBox(height: 2),
+             Text(
+               value,
+               style: TextStyle(
+                 fontSize: 14,
+                 fontWeight: FontWeight.bold,
+                 color: color,
+               ),
+             ),
+           ],
+         ],
+       );
+     }
+
+     Widget _buildCategoriaSpecificInterface(String categoria, Map<String, dynamic> exercicio) {
+       print('DEBUG: Categoria recebida: "$categoria"');
+       print('DEBUG: Exercício completo: $exercicio');
+       
+       switch (categoria) {
+         case 'Com Pesos (Musculação)':
+           print('DEBUG: Usando interface de Musculação');
+           return _buildMusculacaoInterface(exercicio);
+         case 'Peso Corporal (Calistenia)':
+           print('DEBUG: Usando interface de Calistenia');
+           return _buildCalisteniaInterface(exercicio);
+         case 'Cardio / Corrida':
+           print('DEBUG: Usando interface de Cardio');
+           return _buildCardioInterface(exercicio);
+         case 'Funcional':
+           print('DEBUG: Usando interface Funcional');
+           return _buildFuncionalInterface(exercicio);
+         case 'Alongamento / Mobilidade':
+           print('DEBUG: Usando interface de Alongamento');
+           return _buildAlongamentoInterface(exercicio);
+         case 'HIIT / Alta Intensidade':
+           print('DEBUG: Usando interface HIIT');
+           return _buildHIITInterface(exercicio);
+         case 'Isometria':
+           print('DEBUG: Usando interface Isometria');
+           return _buildIsometriaInterface(exercicio);
+         default:
+           print('DEBUG: Usando interface genérica - categoria não reconhecida');
+           return _buildGenericoInterface(exercicio);
+       }
+     }
+
+     Widget _buildFuturisticControlPanel(bool isDark, Map<String, dynamic> exercicio) {
+       final categoria = exercicio['categoria']?.toString() ?? '';
+       
+       return Column(
+         children: [
+           // Interface específica por categoria
+           _buildCategoriaSpecificInterface(categoria, exercicio),
+           const SizedBox(height: 16),
+           
          // Layout principal com botão circular no centro
          Row(
            mainAxisAlignment: MainAxisAlignment.spaceEvenly,

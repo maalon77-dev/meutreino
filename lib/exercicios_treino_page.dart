@@ -52,15 +52,25 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         });
         return;
       }
+
+      // Obter o ID do usuário logado (opcional para compatibilidade)
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id') ?? 0;
       
       // Usar a nova API que funciona
-      final url = Uri.parse('https://airfit.online/api/get_exercicios.php?id_treino=$treinoId');
+      final url = usuarioId > 0 
+          ? Uri.parse('https://airfit.online/api/get_exercicios.php?id_treino=$treinoId&user_id=$usuarioId')
+          : Uri.parse('https://airfit.online/api/get_exercicios.php?id_treino=$treinoId');
+      print('=== DEBUG CARREGAR EXERCÍCIOS ===');
+      print('Treino ID: $treinoId');
+      print('Usuario ID: $usuarioId');
       print('URL da requisição: $url');
       
       final response = await http.get(url);
       print('Status da resposta: ${response.statusCode}');
-      print('Corpo da resposta: "${response.body.substring(0, response.body.length > 100 ? 100 : response.body.length)}..."');
-      print('Tamanho do corpo: ${response.body.length}');
+      
+      // Sempre mostrar o corpo da resposta para debug
+      print('Corpo da resposta: ${response.body}');
       
       if (response.statusCode == 200) {
         if (response.body.isNotEmpty) {
@@ -245,9 +255,20 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         return;
       }
 
+      // Obter o ID do usuário logado
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      if (usuarioId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro: Usuário não identificado. Faça login novamente.')),
+        );
+        return;
+      }
+
       // Preparar dados do exercício para inserir na tabela exercicios
       final dadosExercicio = {
         'id_treino': treinoId.toString(),
+        'user_id': usuarioId.toString(), // Adicionar ID do usuário
         'nome_exercicio': exercicioSelecionado['nome_do_exercicio'] ?? 'Exercício',
         'foto_exercicio': exercicioSelecionado['foto_gif'] ?? '',
         'numero_repeticoes': '10', // Valores padrão
@@ -285,6 +306,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
           final novoExercicio = {
             'id': data['id'],
             'id_treino': treinoId,
+            'user_id': usuarioId,
             'nome_do_exercicio': dadosExercicio['nome_exercicio'],
             'foto_gif': dadosExercicio['foto_exercicio'],
             'numero_repeticoes': dadosExercicio['numero_repeticoes'],
@@ -292,6 +314,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
             'numero_series': dadosExercicio['numero_series'],
             'tempo_descanso': dadosExercicio['tempo_descanso'],
             'ordem': dadosExercicio['ordem'],
+            'editado': false, // Marcar como não editado
           };
 
           setState(() {
@@ -564,144 +587,47 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
   }
 
   Future<void> _editarExercicio(BuildContext context, Map<String, dynamic> exercicio, int index) async {
-    final repController = TextEditingController(text: exercicio['numero_repeticoes']?.toString() ?? '');
-    final pesoController = TextEditingController(text: exercicio['peso']?.toString() ?? '');
-    final seriesController = TextEditingController(text: exercicio['numero_series']?.toString() ?? '');
-    final descansoController = TextEditingController(text: exercicio['tempo_descanso']?.toString() ?? '');
-    final formKey = GlobalKey<FormState>();
-    bool loading = false;
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Editar Exercício', style: TextStyle(fontWeight: FontWeight.bold)),
-              content: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      const Text('Número de Repetições', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6B47DC))),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: repController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => v == null || v.isEmpty ? 'Informe as repetições' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Peso', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6B47DC))),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: pesoController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => v == null || v.isEmpty ? 'Informe o peso' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Número de Séries', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6B47DC))),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: seriesController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => v == null || v.isEmpty ? 'Informe as séries' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Tempo de Descanso', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6B47DC))),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        controller: descansoController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => v == null || v.isEmpty ? 'Informe o descanso' : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: loading ? null : () async {
-                    if (!formKey.currentState!.validate()) return;
-                    setState(() => loading = true);
-                    try {
-                      final response = await http.post(
-                        Uri.parse('https://airfit.online/api/api.php'),
-                        body: {
-                          'tabela': 'exercicios',
-                          'acao': 'atualizar',
-                          'id': exercicio['id'].toString(),
-                          'numero_repeticoes': repController.text,
-                          'peso': pesoController.text,
-                          'numero_series': seriesController.text,
-                          'tempo_descanso': descansoController.text,
-                        },
-                      );
-                      final data = jsonDecode(response.body);
-                      if (data['sucesso'] == true) {
-                        Navigator.of(context).pop();
-                        setState(() {
-                          exerciciosApi[index]['numero_repeticoes'] = repController.text;
-                          exerciciosApi[index]['peso'] = pesoController.text;
-                          exerciciosApi[index]['numero_series'] = seriesController.text;
-                          exerciciosApi[index]['tempo_descanso'] = descansoController.text;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Exercício atualizado com sucesso!')),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao atualizar: \\${data['erro'] ?? 'Erro desconhecido'}')),
-                        );
-                      }
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro de conexão: \\$e')),
-                      );
-                    }
-                    setState(() => loading = false);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Salvar Mudanças'),
-                ),
-                TextButton(
-                  onPressed: loading ? null : () => Navigator.of(context).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF9CA3AF),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  ),
-                  child: const Text('Fechar'),
-                ),
-              ],
-            );
+        return _EditarExercicioDialog(
+          exercicio: exercicio,
+          index: index,
+          onSave: (updatedData) {
+            setState(() {
+              exerciciosApi[index].addAll(updatedData);
+            });
           },
         );
       },
     );
+  }
+
+  bool _isExercicioEditado(Map<String, dynamic> exercicio) {
+    final editado = exercicio['editado'];
+    return editado == true || editado == 1 || editado == '1';
+  }
+
+  String _getDescricaoCategoria(String categoria, String peso, String repeticoes, String series, String tempoDescanso) {
+    switch (categoria) {
+      case 'Com Pesos (Musculação)':
+        return '$series séries • $repeticoes reps • ${peso}kg • ${tempoDescanso}s descanso';
+      case 'Peso Corporal (Calistenia)':
+        return '$series séries • $repeticoes repetições • ${tempoDescanso}s descanso';
+      case 'Cardio / Corrida':
+        return '${tempoDescanso} min • Intensidade $repeticoes/10';
+      case 'Funcional':
+        return '$series séries • $repeticoes reps/tempo • ${tempoDescanso}s descanso';
+      case 'Alongamento / Mobilidade':
+        return '$series repetições • ${tempoDescanso}s duração';
+      case 'HIIT / Alta Intensidade':
+        return '$series rounds • ${repeticoes}s trabalho • ${tempoDescanso}s descanso';
+      case 'Isometria':
+        return '$series séries • ${repeticoes}s duração • ${tempoDescanso}s descanso';
+      default:
+        return '$series séries • $repeticoes reps • ${peso}kg • ${tempoDescanso}s descanso';
+    }
   }
 
   @override
@@ -845,14 +771,67 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ExecucaoTreinoPage(
-                                nomeTreino: widget.treino['nome_treino'] ?? 'Treino',
-                                exercicios: exerciciosApi,
+                          // Verificar se todos os exercícios foram editados
+                          print('=== DEBUG INICIAR TREINO ===');
+                          for (var ex in exerciciosApi) {
+                            print('Exercício: ${ex['nome_do_exercicio']}, editado: ${ex['editado']}, tipo: ${ex['editado'].runtimeType}');
+                          }
+                          
+                          final exerciciosNaoEditados = exerciciosApi.where((ex) => !_isExercicioEditado(ex)).toList();
+                          print('Exercícios não editados: ${exerciciosNaoEditados.length}');
+                          
+                          if (exerciciosNaoEditados.isNotEmpty) {
+                            // Mostrar dialog de aviso
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Icon(Icons.warning, color: Colors.orange, size: 24),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Exercícios Pendentes',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    'Você precisa configurar ${exerciciosNaoEditados.length} exercício(s) antes de iniciar o treino.\n\nClique no botão "EDITAR" nos exercícios destacados em vermelho para configurar os dados.',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      child: Text(
+                                        'Entendi',
+                                        style: TextStyle(
+                                          color: Color(0xFF3B82F6),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          } else {
+                            // Todos os exercícios foram editados, pode iniciar o treino
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ExecucaoTreinoPage(
+                                  nomeTreino: widget.treino['nome_treino'] ?? 'Treino',
+                                  exercicios: exerciciosApi,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3B82F6),
@@ -1005,15 +984,20 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     itemBuilder: (context, index) {
                       final exercicio = lista[index];
                       final nome = exercicio['nome_do_exercicio'] ?? 'Exercício';
+                      final categoria = exercicio['categoria'] ?? '';
                       final peso = exercicio['peso'] ?? '0';
                       final repeticoes = exercicio['numero_repeticoes'] ?? '0';
                       final series = exercicio['numero_series'] ?? '0';
+                      final tempoDescanso = exercicio['tempo_descanso'] ?? '60';
                       final foto = exercicio['foto_gif'] ?? '';
+                      final editado = _isExercicioEditado(exercicio);
                       return Container(
                         key: ValueKey(exercicio['id']),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                          color: !editado 
+                              ? (isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2)) 
+                              : (isDark ? const Color(0xFF1F2937) : Colors.white),
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
@@ -1023,8 +1007,10 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                             ),
                           ],
                           border: Border.all(
-                            color: Colors.black.withOpacity(0.03),
-                            width: 1,
+                            color: !editado 
+                                ? const Color(0xFFEF4444) 
+                                : Colors.black.withOpacity(0.03),
+                            width: !editado ? 2 : 1,
                           ),
                         ),
                         child: Padding(
@@ -1051,44 +1037,52 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            nome,
+                                            style: TextStyle(
+                                              color: isDark ? Colors.white : const Color(0xFF111827),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (!editado) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEF4444),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: const Text(
+                                              'EDITAR',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      nome,
+                                      !editado 
+                                          ? 'Configure os dados do exercício antes de iniciar o treino'
+                                          : _getDescricaoCategoria(categoria, peso, repeticoes, series, tempoDescanso),
                                       style: TextStyle(
-                                        color: isDark ? Colors.white : const Color(0xFF111827),
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
+                                        color: !editado ? const Color(0xFFEF4444) : Colors.grey[600],
+                                        fontSize: 12,
+                                        fontWeight: !editado ? FontWeight.w600 : FontWeight.w500,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 2,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('Peso: ', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                            Text('$peso' 'kg', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                          ],
-                                        ),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('Repetições: ', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                            Text('$repeticoes', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                          ],
-                                        ),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('Séries: ', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                                            Text('$series', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                          ],
-                                        ),
-                                      ],
                                     ),
                                   ],
                                 ),
@@ -1183,5 +1177,768 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         ),
       ),
     );
+  }
+}
+
+class _EditarExercicioDialog extends StatefulWidget {
+  final Map<String, dynamic> exercicio;
+  final int index;
+  final Function(Map<String, dynamic>) onSave;
+
+  const _EditarExercicioDialog({
+    required this.exercicio,
+    required this.index,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditarExercicioDialog> createState() => _EditarExercicioDialogState();
+}
+
+class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
+  String? categoriaSelecionada;
+  bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _detectarCategoriaExistente();
+  }
+
+  void _detectarCategoriaExistente() {
+    // Verificar se o exercício já tem uma categoria salva
+    final categoriaExistente = widget.exercicio['categoria']?.toString();
+    if (categoriaExistente != null && categoriaExistente.isNotEmpty) {
+      // Tentar encontrar a categoria correspondente
+      for (var categoria in categorias) {
+        if (categoria['nome'] == categoriaExistente) {
+          setState(() {
+            categoriaSelecionada = categoria['id'];
+          });
+          break;
+        }
+      }
+    }
+  }
+  
+  final List<Map<String, dynamic>> categorias = [
+    {
+      'id': 'musculacao',
+      'nome': 'Com Pesos (Musculação)',
+      'descricao': 'Exercícios com halteres, barras, máquinas ou kettlebells.',
+      'icon': Icons.fitness_center,
+      'color': Color(0xFF3B82F6),
+    },
+    {
+      'id': 'calistenia',
+      'nome': 'Peso Corporal (Calistenia)',
+      'descricao': 'Flexão, abdominal, agachamento livre, barra fixa etc.',
+      'icon': Icons.accessibility_new,
+      'color': Color(0xFF10B981),
+    },
+    {
+      'id': 'cardio',
+      'nome': 'Cardio / Corrida',
+      'descricao': 'Corrida, caminhada, bicicleta, escada, jump rope etc.',
+      'icon': Icons.directions_run,
+      'color': Color(0xFFF59E0B),
+    },
+    {
+      'id': 'funcional',
+      'nome': 'Funcional',
+      'descricao': 'Movimentos com cones, bolas, elásticos, corda naval etc.',
+      'icon': Icons.sports_gymnastics,
+      'color': Color(0xFF8B5CF6),
+    },
+    {
+      'id': 'alongamento',
+      'nome': 'Alongamento / Mobilidade',
+      'descricao': 'Exercícios para flexibilidade, articulações, relaxamento.',
+      'icon': Icons.self_improvement,
+      'color': Color(0xFF06B6D4),
+    },
+    {
+      'id': 'hiit',
+      'nome': 'HIIT / Alta Intensidade',
+      'descricao': 'Circuitos rápidos com ou sem equipamentos, estilo crossfit.',
+      'icon': Icons.whatshot,
+      'color': Color(0xFFEF4444),
+    },
+    {
+      'id': 'isometria',
+      'nome': 'Isometria',
+      'descricao': 'Exercícios estáticos como prancha, agachamento parado.',
+      'icon': Icons.pause_circle_filled,
+      'color': Color(0xFF6B7280),
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Color(0xFF3B82F6),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: Colors.white, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Editar Exercício',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: categoriaSelecionada == null
+                    ? _buildSelecaoCategoria()
+                    : _buildFormularioCategoria(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelecaoCategoria() {
+    final categoriaAtual = widget.exercicio['categoria']?.toString();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Selecione a categoria do exercício:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF374151),
+          ),
+        ),
+        if (categoriaAtual != null && categoriaAtual.isNotEmpty) ...[
+          SizedBox(height: 8),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue, size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Categoria atual: $categoriaAtual',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        SizedBox(height: 16),
+        ...categorias.map((categoria) => _buildCategoriaCard(categoria)),
+      ],
+    );
+  }
+
+  Widget _buildCategoriaCard(Map<String, dynamic> categoria) {
+    final categoriaAtual = widget.exercicio['categoria']?.toString();
+    final isAtual = categoria['nome'] == categoriaAtual;
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            categoriaSelecionada = categoria['id'];
+          });
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isAtual ? categoria['color'] : Colors.grey.shade200,
+              width: isAtual ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            color: isAtual ? categoria['color'].withOpacity(0.05) : Colors.grey.shade50,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: categoria['color'].withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  categoria['icon'],
+                  color: categoria['color'],
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      categoria['nome'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      categoria['descricao'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  if (isAtual) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: categoria['color'],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'ATUAL',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                  ],
+                  Icon(
+                    Icons.chevron_right,
+                    color: categoria['color'],
+                    size: 20,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormularioCategoria() {
+    final categoria = categorias.firstWhere((c) => c['id'] == categoriaSelecionada);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header da categoria selecionada
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: categoria['color'].withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: categoria['color'].withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              Icon(categoria['icon'], color: categoria['color'], size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  categoria['nome'],
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: categoria['color'],
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    categoriaSelecionada = null;
+                  });
+                },
+                child: Text('Alterar', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 20),
+        
+        // Formulário específico para a categoria
+        _buildFormularioEspecifico(categoriaSelecionada!),
+      ],
+    );
+  }
+
+  Widget _buildFormularioEspecifico(String categoria) {
+    switch (categoria) {
+      case 'musculacao':
+        return _buildFormMusculacao();
+      case 'calistenia':
+        return _buildFormCalistenia();
+      case 'cardio':
+        return _buildFormCardio();
+      case 'funcional':
+        return _buildFormFuncional();
+      case 'alongamento':
+        return _buildFormAlongamento();
+      case 'hiit':
+        return _buildFormHIIT();
+      case 'isometria':
+        return _buildFormIsometria();
+      default:
+        return _buildFormGenerico();
+    }
+  }
+
+  Widget _buildFormMusculacao() {
+    final pesoController = TextEditingController(text: widget.exercicio['peso']?.toString() ?? '');
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Peso (kg)', pesoController, 'peso'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Séries', seriesController, 'numero_series'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': pesoController,
+          'numero_repeticoes': repController,
+          'numero_series': seriesController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormCalistenia() {
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Séries', seriesController, 'numero_series'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': repController,
+          'numero_series': seriesController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormCardio() {
+    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final intensidadeController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+
+    return Column(
+      children: [
+        _buildTextField('Duração (min)', duracaoController, 'tempo_descanso'),
+        SizedBox(height: 16),
+        _buildTextField('Intensidade (1-10)', intensidadeController, 'numero_repeticoes'),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': intensidadeController,
+          'numero_series': TextEditingController(text: '1'),
+          'tempo_descanso': duracaoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormFuncional() {
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Repetições/Tempo', repController, 'numero_repeticoes'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Séries', seriesController, 'numero_series'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': repController,
+          'numero_series': seriesController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormAlongamento() {
+    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Duração (s)', duracaoController, 'tempo_descanso'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Repetições', seriesController, 'numero_series'),
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': TextEditingController(text: '1'),
+          'numero_series': seriesController,
+          'tempo_descanso': duracaoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormHIIT() {
+    final trabalhoController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final roundsController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Trabalho (s)', trabalhoController, 'numero_repeticoes'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _buildTextField('Rounds', roundsController, 'numero_series'),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': trabalhoController,
+          'numero_series': roundsController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormIsometria() {
+    final duracaoController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Duração (s)', duracaoController, 'numero_repeticoes'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Séries', seriesController, 'numero_series'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': TextEditingController(text: '0'),
+          'numero_repeticoes': duracaoController,
+          'numero_series': seriesController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildFormGenerico() {
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final pesoController = TextEditingController(text: widget.exercicio['peso']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Repetições', repController, 'numero_repeticoes'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Peso', pesoController, 'peso'),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField('Séries', seriesController, 'numero_series'),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _buildTextField('Descanso (s)', descansoController, 'tempo_descanso'),
+            ),
+          ],
+        ),
+        SizedBox(height: 24),
+        _buildBotoesSalvar({
+          'peso': pesoController,
+          'numero_repeticoes': repController,
+          'numero_series': seriesController,
+          'tempo_descanso': descansoController,
+        }),
+      ],
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, String field) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFF3B82F6)),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBotoesSalvar(Map<String, TextEditingController> controllers) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text('Cancelar'),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: loading ? null : () => _salvarAlteracoes(controllers),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF3B82F6),
+              padding: EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: loading 
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    'Salvar',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _salvarAlteracoes(Map<String, TextEditingController> controllers) async {
+    setState(() => loading = true);
+    
+    try {
+      // Obter o nome da categoria selecionada
+      final categoriaNome = categorias.firstWhere((c) => c['id'] == categoriaSelecionada)['nome'];
+      
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/api.php'),
+        body: {
+          'tabela': 'exercicios',
+          'acao': 'atualizar',
+          'id': widget.exercicio['id'].toString(),
+          'numero_repeticoes': controllers['numero_repeticoes']!.text,
+          'peso': controllers['peso']!.text,
+          'numero_series': controllers['numero_series']!.text,
+          'tempo_descanso': controllers['tempo_descanso']!.text,
+          'categoria': categoriaNome, // Salvar a categoria selecionada
+          'editado': '1', // Marcar como editado no banco de dados
+        },
+      );
+      
+      final data = jsonDecode(response.body);
+      if (data['sucesso'] == true) {
+        Navigator.of(context).pop();
+        
+        // Atualizar dados locais
+        widget.onSave({
+          'numero_repeticoes': controllers['numero_repeticoes']!.text,
+          'peso': controllers['peso']!.text,
+          'numero_series': controllers['numero_series']!.text,
+          'tempo_descanso': controllers['tempo_descanso']!.text,
+          'categoria': categoriaNome,
+          'editado': true, // Marcar como editado
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Exercício atualizado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao atualizar: ${data['erro'] ?? 'Erro desconhecido'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro de conexão: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    
+    setState(() => loading = false);
   }
 } 
