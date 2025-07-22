@@ -2359,11 +2359,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         iconTheme: IconThemeData(
           color: const Color(0xFF374151),
         ),
-        title: Text(
-          widget.nomeTreino,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: const Color(0xFF374151),
-            fontWeight: FontWeight.w700,
+        title: Center(
+          child: Image.asset(
+            'assets/backgrounds/logo.png',
+            height: 32,
+            fit: BoxFit.contain,
           ),
         ),
         centerTitle: true,

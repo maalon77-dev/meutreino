@@ -12,6 +12,7 @@ import 'premios_page.dart';
 import 'metas_page.dart';
 import 'services/meta_service.dart';
 import 'models/meta.dart';
+import 'widgets/app_bar_logo.dart';
 
 class HomePage extends StatefulWidget {
   final int initialIndex;
@@ -128,27 +129,8 @@ class _HomePageState extends State<HomePage> {
           Navigator.pop(context);
         },
       ),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF374151),
-        ),
-        title: _treinoSelecionado != null
-            ? Text(
-                _treinoSelecionado?['nome_treino'] ?? 'Treino',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFF374151),
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            : Text(
-                'UPMAX Fitness',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFF374151),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+      appBar: AppBarLogo(
+        onMenu: () => Scaffold.of(context).openDrawer(),
         centerTitle: true,
       ),
       body: Container(

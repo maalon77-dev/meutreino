@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'treinar_page.dart';
+import 'widgets/adicionar_exercicio_page.dart';
 
 class ExerciciosTreinoPage extends StatefulWidget {
   final Map<String, dynamic> treino;
@@ -232,6 +233,221 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         );
       },
     );
+  }
+
+  Future<void> _adicionarExercicioAoTreino(Map<String, dynamic> exercicioSelecionado) async {
+    try {
+      final treinoId = widget.treino['id'];
+      if (treinoId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro: ID do treino não encontrado')),
+        );
+        return;
+      }
+
+      // Preparar dados do exercício para inserir na tabela exercicios
+      final dadosExercicio = {
+        'id_treino': treinoId.toString(),
+        'nome_exercicio': exercicioSelecionado['nome_do_exercicio'] ?? 'Exercício',
+        'foto_exercicio': exercicioSelecionado['foto_gif'] ?? '',
+        'numero_repeticoes': '10', // Valores padrão
+        'peso': '0',
+        'numero_series': '3',
+        'tempo_descanso': '60',
+        'ordem': (exerciciosApi.length + 1).toString(), // Próxima posição na ordem
+      };
+
+      print('Enviando dados para API: $dadosExercicio');
+      
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/adicionar_exercicio.php'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: dadosExercicio,
+      );
+      
+      print('Status da resposta: ${response.statusCode}');
+      print('Corpo da resposta: ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Verificar se a resposta é JSON válido
+        String responseBody = response.body.trim();
+        if (!responseBody.startsWith('{') && !responseBody.startsWith('[')) {
+          print('Resposta inválida da API: $responseBody');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erro: Resposta inválida da API')),
+          );
+          return;
+        }
+        
+        final data = jsonDecode(responseBody);
+        if (data['sucesso'] == true) {
+          // Adicionar o novo exercício à lista local
+          final novoExercicio = {
+            'id': data['id'],
+            'id_treino': treinoId,
+            'nome_do_exercicio': dadosExercicio['nome_exercicio'],
+            'foto_gif': dadosExercicio['foto_exercicio'],
+            'numero_repeticoes': dadosExercicio['numero_repeticoes'],
+            'peso': dadosExercicio['peso'],
+            'numero_series': dadosExercicio['numero_series'],
+            'tempo_descanso': dadosExercicio['tempo_descanso'],
+            'ordem': dadosExercicio['ordem'],
+          };
+
+          setState(() {
+            exerciciosApi.add(novoExercicio);
+          });
+
+          // Mostrar diálogo de sucesso
+          _mostrarDialogoSucesso(dadosExercicio['nome_exercicio']);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao adicionar exercício: ${data['erro'] ?? 'Erro desconhecido'}')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro HTTP: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      print('Erro ao adicionar exercício: $e');
+      String errorMessage = 'Erro de conexão';
+      
+      if (e.toString().contains('FormatException')) {
+        errorMessage = 'Erro: Resposta inválida da API';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'Erro: Sem conexão com a internet';
+      } else {
+        errorMessage = 'Erro: $e';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
+  }
+
+  void _mostrarDialogoSucesso(String nomeExercicio) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ícone de sucesso
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Mensagem de sucesso
+                Text(
+                  'Exercício adicionado com sucesso!',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF374151),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  nomeExercicio,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF3B82F6),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                
+                // Botões
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Fecha o dialog
+                          // Permanece na página do treino
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Continuar',
+                          style: TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Fecha o dialog
+                          // Abre novamente a página de adicionar exercício
+                          _abrirAdicionarExercicio();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3B82F6),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Adicionar Mais',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _abrirAdicionarExercicio() async {
+    final resultado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdicionarExercicioPage(),
+      ),
+    );
+    // Aqui você pode tratar o resultado (exercício selecionado)
+    if (resultado != null) {
+      await _adicionarExercicioAoTreino(resultado);
+    }
   }
 
   Future<void> _carregarHistoricoTreino() async {
@@ -499,44 +715,42 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         child: CustomScrollView(
           slivers: [
             // Logo do app
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                child: Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF3B82F6).withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.fitness_center,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            // SliverToBoxAdapter(
+            //   child: Container(
+            //     padding: const EdgeInsets.all(20),
+            //     child: Center(
+            //       child: Container(
+            //         width: 80,
+            //         height: 80,
+            //         decoration: BoxDecoration(
+            //           color: const Color(0xFF3B82F6),
+            //           borderRadius: BorderRadius.circular(20),
+            //           boxShadow: [
+            //             BoxShadow(
+            //               color: const Color(0xFF3B82F6).withOpacity(0.3),
+            //               blurRadius: 12,
+            //               offset: const Offset(0, 6),
+            //             ),
+            //           ],
+            //         ),
+            //         child: const Icon(
+            //           Icons.fitness_center,
+            //           color: Colors.white,
+            //           size: 40,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ),
 
             // Cabeçalho com design moderno
             SliverToBoxAdapter(
               child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // margem menor
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(24),
-                    bottomRight: Radius.circular(24),
-                  ),
+                  borderRadius: BorderRadius.circular(24), // todas as bordas arredondadas
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -671,11 +885,17 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Implementar adicionar exercício
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Adicionar exercício...')),
+                        onPressed: () async {
+                          final resultado = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdicionarExercicioPage(),
+                            ),
                           );
+                          // Aqui você pode tratar o resultado (exercício selecionado)
+                          if (resultado != null) {
+                            await _adicionarExercicioAoTreino(resultado);
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3B82F6),

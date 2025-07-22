@@ -104,16 +104,58 @@ switch ($acao) {
             echo json_encode(['erro' => 'Tabela é obrigatória']);
             break;
         }
-        $dados = $_POST;
-        unset($dados['tabela'], $dados['acao']);
-        $campos = implode(',', array_map('esc', array_keys($dados)));
-        $placeholders = implode(',', array_fill(0, count($dados), '?'));
-        $tipos = str_repeat('s', count($dados));
-        $sql = "INSERT INTO `$tabela` ($campos) VALUES ($placeholders)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param($tipos, ...array_values($dados));
-        $ok = $stmt->execute();
-        echo json_encode(['sucesso' => $ok, 'id' => $conn->insert_id]);
+        
+        try {
+            $dados = $_POST;
+            unset($dados['tabela'], $dados['acao']);
+            
+            if (empty($dados)) {
+                echo json_encode(['erro' => 'Nenhum dado fornecido para inserção']);
+                break;
+            }
+            
+            // Validar e limpar os nomes dos campos
+            $campos_validos = [];
+            $valores = [];
+            $tipos = '';
+            
+            foreach ($dados as $campo => $valor) {
+                // Validar se o nome do campo é seguro
+                if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $campo)) {
+                    $campos_validos[] = "`$campo`";
+                    $valores[] = $valor;
+                    $tipos .= 's';
+                }
+            }
+            
+            if (empty($campos_validos)) {
+                echo json_encode(['erro' => 'Nenhum campo válido encontrado']);
+                break;
+            }
+            
+            $campos_str = implode(',', $campos_validos);
+            $placeholders = implode(',', array_fill(0, count($valores), '?'));
+            
+            $sql = "INSERT INTO `$tabela` ($campos_str) VALUES ($placeholders)";
+            
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                echo json_encode(['erro' => 'Erro no prepare: ' . $conn->error]);
+                break;
+            }
+            
+            $stmt->bind_param($tipos, ...$valores);
+            $ok = $stmt->execute();
+            
+            if ($ok) {
+                echo json_encode(['sucesso' => true, 'id' => $conn->insert_id]);
+            } else {
+                echo json_encode(['erro' => 'Erro ao executar query: ' . $stmt->error]);
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['erro' => 'Erro interno: ' . $e->getMessage()]);
+        }
         break;
 
     case 'atualizar':
