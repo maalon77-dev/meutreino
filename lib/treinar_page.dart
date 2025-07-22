@@ -764,10 +764,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     await _fadeController.forward();
   }
 
-  void iniciarDescanso(int segundos) {
+  bool _isCardioDescanso = false; // Variável para controlar se é descanso de Cardio
+
+  void iniciarDescanso(int segundos, {bool isCardio = false}) {
     setState(() {
       descansando = true;
       tempoRestante = segundos;
+      _isCardioDescanso = isCardio; // Armazenar se é Cardio
     });
     timerDescanso?.cancel();
     timerDescanso = Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -780,8 +783,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         setState(() {
           descansando = false;
           tempoRestante = 0;
+          _isCardioDescanso = false; // Resetar a variável
         });
-        // Vibrar 5 vezes ao terminar o descanso
+        // Vibrar 5 vezes ao terminar o descanso/exercício
         if (await Vibration.hasVibrator() ?? false) {
           for (int i = 0; i < 5; i++) {
             Vibration.vibrate(duration: 200);
@@ -794,15 +798,36 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
 
   void concluirSerie() {
     final ex = widget.exercicios[exercicioAtual];
+    final categoria = ex['categoria']?.toString() ?? '';
     final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
     final tempoDescanso = int.tryParse(ex['tempo_descanso']?.toString() ?? '0') ?? 0;
-    if (serieAtual < totalSeries) {
-      iniciarDescanso(tempoDescanso > 0 ? tempoDescanso : 0);
-      setState(() {
-        serieAtual++;
-      });
+    
+    // Para exercícios de Cardio, não há descanso - executa diretamente o tempo do exercício
+    if (categoria == 'Cardio / Corrida') {
+      final tempoExercicioMinutos = tempoDescanso; // Para cardio, tempo_descanso é usado como tempo do exercício em minutos
+      if (tempoExercicioMinutos > 0) {
+        final tempoExercicioSegundos = tempoExercicioMinutos * 60; // Converter minutos para segundos
+        iniciarDescanso(tempoExercicioSegundos, isCardio: true); // Usa o mesmo método mas com o tempo do exercício
+      } else {
+        // Se não há tempo definido, avança direto
+        if (serieAtual < totalSeries) {
+          setState(() {
+            serieAtual++;
+          });
+        } else {
+          avancarExercicio();
+        }
+      }
     } else {
-      avancarExercicio();
+      // Para outros tipos de exercício, mantém a lógica original
+      if (serieAtual < totalSeries) {
+        iniciarDescanso(tempoDescanso > 0 ? tempoDescanso : 0);
+        setState(() {
+          serieAtual++;
+        });
+      } else {
+        avancarExercicio();
+      }
     }
   }
 
@@ -2850,13 +2875,32 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                left: 16,
                top: 16,
                bottom: 16,
-               right: 100, // Aumentado para dar mais espaço ao GIF
+               right: 120, // Aumentado para dar mais espaço ao GIF e evitar overflow
                child: Column(
                  crossAxisAlignment: CrossAxisAlignment.start,
                  children: [
-                                       // Título melhorado - posicionado mais à esquerda
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                   // Categoria pequena e clean
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                     decoration: BoxDecoration(
+                       color: _getCategoriaColor(widget.exercicios[exercicioAtual]['categoria']?.toString() ?? ''),
+                       borderRadius: BorderRadius.circular(12),
+                     ),
+                     child: Text(
+                       _getCategoriaShortName(widget.exercicios[exercicioAtual]['categoria']?.toString() ?? ''),
+                       style: GoogleFonts.poppins(
+                         color: Colors.white,
+                         fontWeight: FontWeight.w600,
+                         fontSize: 10,
+                         letterSpacing: 0.5,
+                       ),
+                     ),
+                   ),
+                   const SizedBox(height: 4),
+                   
+                   // Título melhorado - posicionado mais à esquerda
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                      child: Text(
                        nome,
                        style: GoogleFonts.poppins(
@@ -2870,7 +2914,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                              color: Colors.white.withOpacity(0.3),
                              blurRadius: 1,
                              offset: const Offset(0.5, 0.5),
-                       ),
+                           ),
                          ],
                        ),
                        maxLines: 3,
@@ -3460,15 +3504,6 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
      Widget _buildFuturisticProgressBar(int totalSeries, bool isDark) {
      return Column(
        children: [
-         Text(
-           'Progresso das Séries',
-           style: GoogleFonts.poppins(
-             color: const Color(0xFF666666),
-             fontSize: 12,
-             fontWeight: FontWeight.w500,
-           ),
-         ),
-         const SizedBox(height: 12),
          AnimatedBuilder(
            animation: _progressAnimation,
            builder: (context, child) {
@@ -3496,194 +3531,319 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
    }
 
    Widget _buildEnhancedStats(String reps, String peso, int totalSeries) {
+     // Obter a categoria do exercício atual
+     final categoria = widget.exercicios[exercicioAtual]['categoria']?.toString() ?? '';
+     final exercicio = widget.exercicios[exercicioAtual];
+     
      return Container(
-       padding: const EdgeInsets.all(12),
+       padding: const EdgeInsets.all(8),
        child: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
          mainAxisSize: MainAxisSize.min,
          children: [
-           // Séries com destaque - mais compacto
-           Row(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-               Container(
-                 padding: const EdgeInsets.all(6),
-                 decoration: BoxDecoration(
-                   color: const Color(0xFF3B82F6),
-                   borderRadius: BorderRadius.circular(6),
-                 ),
-                 child: Icon(
-                   Icons.repeat,
-                   size: 14,
-                   color: Colors.white,
-                 ),
-               ),
-               const SizedBox(width: 8),
-               Column(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 mainAxisSize: MainAxisSize.min,
-                 children: [
-                   Text(
-                     'Séries',
-                     style: GoogleFonts.poppins(
-                       color: Colors.black,
-                       fontSize: 10,
-                       fontWeight: FontWeight.w500,
-                       shadows: [
-                         Shadow(
-                           color: Colors.white.withOpacity(0.3),
-                           blurRadius: 1,
-                           offset: const Offset(0.5, 0.5),
-                         ),
-                       ],
-                     ),
-                   ),
-                   Text(
-                     '$serieAtual / $totalSeries',
-                     style: GoogleFonts.poppins(
-                       color: Colors.black,
-                       fontSize: 14,
-                       fontWeight: FontWeight.w700,
-                       shadows: [
-                         Shadow(
-                           color: Colors.white.withOpacity(0.3),
-                           blurRadius: 1,
-                           offset: const Offset(0.5, 0.5),
-                         ),
-                       ],
-                     ),
-                   ),
-                 ],
-               ),
-             ],
+           // Primeira linha - sempre presente
+           _buildStatRow(
+             icon: Icons.repeat,
+             iconColor: Colors.white,
+             backgroundColor: const Color(0xFF3B82F6),
+             label: 'Séries',
+             value: '$serieAtual / ${exercicio['numero_series'] ?? totalSeries}',
            ),
            
-           const SizedBox(height: 8),
+           const SizedBox(height: 6),
            
-           // Repetições e Peso lado a lado - mais compacto
-           Row(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-               // Repetições
-               Row(
-                 mainAxisSize: MainAxisSize.min,
-                 children: [
-                   Container(
-                     padding: const EdgeInsets.all(6),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFF2A2A2A),
-                       borderRadius: BorderRadius.circular(6),
-                     ),
-                     child: Icon(
-                       Icons.cached,
-                       size: 14,
-                       color: Colors.white,
-                     ),
-                   ),
-                   const SizedBox(width: 6),
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     mainAxisSize: MainAxisSize.min,
-                     children: [
-                       Text(
-                         'Reps',
-                         style: GoogleFonts.poppins(
-                           color: Colors.black,
-                           fontSize: 10,
-                           fontWeight: FontWeight.w500,
-                           shadows: [
-                             Shadow(
-                               color: Colors.white.withOpacity(0.3),
-                               blurRadius: 1,
-                               offset: const Offset(0.5, 0.5),
-                             ),
-                           ],
-                         ),
-                       ),
-                       Text(
-                         reps,
-                         style: GoogleFonts.poppins(
-                           color: Colors.black,
-                           fontSize: 12,
-                           fontWeight: FontWeight.w700,
-                           shadows: [
-                             Shadow(
-                               color: Colors.white.withOpacity(0.3),
-                               blurRadius: 1,
-                               offset: const Offset(0.5, 0.5),
-                             ),
-                           ],
-                         ),
-                       ),
-                     ],
-                   ),
-                 ],
-               ),
-               
-               const SizedBox(width: 12),
-               
-               // Peso
-               Row(
-                 mainAxisSize: MainAxisSize.min,
-                 children: [
-                   Container(
-                     padding: const EdgeInsets.all(6),
-                     decoration: BoxDecoration(
-                       color: const Color(0xFFE8E8E8),
-                       borderRadius: BorderRadius.circular(6),
-                     ),
-                     child: Icon(
-                       Icons.fitness_center,
-                       size: 14,
-                       color: const Color(0xFF666666),
-                     ),
-                   ),
-                   const SizedBox(width: 6),
-                   Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     mainAxisSize: MainAxisSize.min,
-                     children: [
-                       Text(
-                         'Peso',
-                         style: GoogleFonts.poppins(
-                           color: Colors.black,
-                           fontSize: 10,
-                           fontWeight: FontWeight.w500,
-                           shadows: [
-                             Shadow(
-                               color: Colors.white.withOpacity(0.3),
-                               blurRadius: 1,
-                               offset: const Offset(0.5, 0.5),
-                             ),
-                           ],
-                         ),
-                       ),
-                       Text(
-                         '${peso}kg',
-                         style: GoogleFonts.poppins(
-                           color: Colors.black,
-                           fontSize: 12,
-                           fontWeight: FontWeight.w700,
-                           shadows: [
-                             Shadow(
-                               color: Colors.white.withOpacity(0.3),
-                               blurRadius: 1,
-                               offset: const Offset(0.5, 0.5),
-                             ),
-                           ],
-                         ),
-                         maxLines: 1,
-                         overflow: TextOverflow.ellipsis,
-                       ),
-                     ],
-                   ),
-                 ],
-               ),
-             ],
-           ),
+           // Segunda linha - específica por categoria
+           _buildCategoriaSpecificStats(categoria, exercicio),
          ],
        ),
      );
+   }
+
+   Widget _buildStatRow({
+     required IconData icon,
+     required Color iconColor,
+     required Color backgroundColor,
+     required String label,
+     required String value,
+   }) {
+     return Row(
+       mainAxisSize: MainAxisSize.min,
+       children: [
+         Container(
+           padding: const EdgeInsets.all(4),
+           decoration: BoxDecoration(
+             color: backgroundColor,
+             borderRadius: BorderRadius.circular(4),
+           ),
+           child: Icon(
+             icon,
+             size: 12,
+             color: iconColor,
+           ),
+         ),
+         const SizedBox(width: 6),
+         Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             Text(
+               label,
+               style: GoogleFonts.poppins(
+                 color: Colors.black,
+                 fontSize: 9,
+                 fontWeight: FontWeight.w500,
+                 shadows: [
+                   Shadow(
+                     color: Colors.white.withOpacity(0.3),
+                     blurRadius: 1,
+                     offset: const Offset(0.5, 0.5),
+                   ),
+                 ],
+               ),
+             ),
+             Text(
+               value,
+               style: GoogleFonts.poppins(
+                 color: Colors.black,
+                 fontSize: 12,
+                 fontWeight: FontWeight.w700,
+                 shadows: [
+                   Shadow(
+                     color: Colors.white.withOpacity(0.3),
+                     blurRadius: 1,
+                     offset: const Offset(0.5, 0.5),
+                   ),
+                 ],
+               ),
+             ),
+           ],
+         ),
+       ],
+     );
+   }
+
+   Widget _buildCategoriaSpecificStats(String categoria, Map<String, dynamic> exercicio) {
+     switch (categoria) {
+       case 'Com Pesos (Musculação)':
+         return Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 _buildStatRow(
+                   icon: Icons.fitness_center,
+                   iconColor: Colors.white,
+                   backgroundColor: const Color(0xFF2A2A2A),
+                   label: 'Repetições',
+                   value: '${exercicio['numero_repeticoes'] ?? 0}',
+                 ),
+                 const SizedBox(width: 8),
+                 _buildStatRow(
+                   icon: Icons.monitor_weight,
+                   iconColor: const Color(0xFF666666),
+                   backgroundColor: const Color(0xFFE8E8E8),
+                   label: 'Peso',
+                   value: '${exercicio['peso'] ?? 0}kg',
+                 ),
+               ],
+             ),
+           ],
+         );
+         
+       case 'Peso Corporal (Calistenia)':
+         return Row(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             _buildStatRow(
+               icon: Icons.fitness_center,
+               iconColor: Colors.white,
+               backgroundColor: const Color(0xFF2A2A2A),
+               label: 'Repetições',
+               value: '${exercicio['numero_repeticoes'] ?? 0}',
+             ),
+           ],
+         );
+         
+       case 'Cardio / Corrida':
+         return Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 _buildStatRow(
+                   icon: Icons.straighten,
+                   iconColor: Colors.white,
+                   backgroundColor: const Color(0xFF2A2A2A),
+                   label: 'Distância',
+                   value: '${exercicio['peso'] ?? 0}km',
+                 ),
+                 const SizedBox(width: 8),
+                 _buildStatRow(
+                   icon: Icons.timer,
+                   iconColor: const Color(0xFF666666),
+                   backgroundColor: const Color(0xFFE8E8E8),
+                   label: 'Tempo',
+                   value: '${exercicio['tempo_descanso'] ?? 0}min',
+                 ),
+               ],
+             ),
+           ],
+         );
+         
+       case 'Funcional':
+         return Row(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             _buildStatRow(
+               icon: Icons.timer,
+               iconColor: Colors.white,
+               backgroundColor: const Color(0xFF2A2A2A),
+               label: 'Tempo',
+               value: '${exercicio['tempo_descanso'] ?? 0}s',
+             ),
+           ],
+         );
+         
+       case 'Alongamento / Mobilidade':
+         return Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 _buildStatRow(
+                   icon: Icons.timer,
+                   iconColor: Colors.white,
+                   backgroundColor: const Color(0xFF2A2A2A),
+                   label: 'Tempo',
+                   value: '${exercicio['tempo_descanso'] ?? 0}s',
+                 ),
+                 const SizedBox(width: 8),
+                 _buildStatRow(
+                   icon: Icons.repeat,
+                   iconColor: const Color(0xFF666666),
+                   backgroundColor: const Color(0xFFE8E8E8),
+                   label: 'Repetições',
+                   value: '${exercicio['numero_repeticoes'] ?? 0}',
+                 ),
+               ],
+             ),
+           ],
+         );
+         
+       case 'HIIT / Alta Intensidade':
+         return Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 _buildStatRow(
+                   icon: Icons.whatshot,
+                   iconColor: Colors.white,
+                   backgroundColor: const Color(0xFF2A2A2A),
+                   label: 'Esforço',
+                   value: '${exercicio['numero_repeticoes'] ?? 0}s',
+                 ),
+                 const SizedBox(width: 8),
+                 _buildStatRow(
+                   icon: Icons.repeat,
+                   iconColor: const Color(0xFF666666),
+                   backgroundColor: const Color(0xFFE8E8E8),
+                   label: 'Ciclos',
+                   value: '${exercicio['numero_series'] ?? 0}',
+                 ),
+               ],
+             ),
+           ],
+         );
+         
+       case 'Isometria':
+         return Row(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             _buildStatRow(
+               icon: Icons.timer,
+               iconColor: Colors.white,
+               backgroundColor: const Color(0xFF2A2A2A),
+               label: 'Tempo',
+               value: '${exercicio['numero_repeticoes'] ?? 0}s',
+             ),
+           ],
+         );
+         
+       default:
+         // Interface genérica
+         return Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 _buildStatRow(
+                   icon: Icons.fitness_center,
+                   iconColor: Colors.white,
+                   backgroundColor: const Color(0xFF2A2A2A),
+                   label: 'Reps',
+                   value: '${exercicio['numero_repeticoes'] ?? 0}',
+                 ),
+                 const SizedBox(width: 8),
+                 _buildStatRow(
+                   icon: Icons.monitor_weight,
+                   iconColor: const Color(0xFF666666),
+                   backgroundColor: const Color(0xFFE8E8E8),
+                   label: 'Peso',
+                   value: '${exercicio['peso'] ?? 0}kg',
+                 ),
+               ],
+             ),
+           ],
+         );
+     }
+   }
+
+   Color _getCategoriaColor(String categoria) {
+     switch (categoria) {
+       case 'Com Pesos (Musculação)':
+         return const Color(0xFF3B82F6); // Azul
+       case 'Peso Corporal (Calistenia)':
+         return const Color(0xFF10B981); // Verde
+       case 'Cardio / Corrida':
+         return const Color(0xFFF59E0B); // Laranja
+       case 'Funcional':
+         return const Color(0xFF8B5CF6); // Roxo
+       case 'Alongamento / Mobilidade':
+         return const Color(0xFF06B6D4); // Ciano
+       case 'HIIT / Alta Intensidade':
+         return const Color(0xFFEF4444); // Vermelho
+       case 'Isometria':
+         return const Color(0xFF6B7280); // Cinza
+       default:
+         return const Color(0xFF6B7280); // Cinza padrão
+     }
+   }
+
+   String _getCategoriaShortName(String categoria) {
+     switch (categoria) {
+       case 'Com Pesos (Musculação)':
+         return 'MUSCULAÇÃO';
+       case 'Peso Corporal (Calistenia)':
+         return 'CALISTENIA';
+       case 'Cardio / Corrida':
+         return 'CARDIO';
+       case 'Funcional':
+         return 'FUNCIONAL';
+       case 'Alongamento / Mobilidade':
+         return 'ALONGAMENTO';
+       case 'HIIT / Alta Intensidade':
+         return 'HIIT';
+       case 'Isometria':
+         return 'ISOMETRIA';
+       default:
+         return 'EXERCÍCIO';
+     }
    }
 
   Widget _buildHolographicDivider() {
@@ -4071,11 +4231,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
        
        return Column(
          children: [
-           // Interface específica por categoria
-           _buildCategoriaSpecificInterface(categoria, exercicio),
-           const SizedBox(height: 16),
-           
-         // Layout principal com botão circular no centro
+           // Layout principal com botão circular no centro
          Row(
            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
            children: [
@@ -4093,6 +4249,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                isResting: descansando,
                restTime: tempoRestante,
                isDark: false,
+               isCardio: descansando ? _isCardioDescanso : categoria == 'Cardio / Corrida',
              ),
              
              // Botão direito - Pular exercício
@@ -4113,6 +4270,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
      required bool isResting,
      required int restTime,
      required bool isDark,
+     bool isCardio = false,
    }) {
      return GestureDetector(
        onTap: onPressed,
@@ -4143,7 +4301,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                        size: 18,
                      ),
                      Text(
-                       '${restTime}s',
+                       isCardio 
+                           ? '${(restTime ~/ 60).toString().padLeft(2, '0')}:${(restTime % 60).toString().padLeft(2, '0')}'
+                           : '${restTime}s',
                        style: GoogleFonts.poppins(
                          color: Colors.white,
                          fontSize: 8,
@@ -4152,12 +4312,30 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                      ),
                    ],
                  )
-               : Icon(
-                   Icons.play_arrow,
-                   color: onPressed != null 
-                       ? Colors.white
-                       : Colors.grey[600],
-                   size: 24,
+               : Column(
+                   mainAxisAlignment: MainAxisAlignment.center,
+                   children: [
+                     Icon(
+                       Icons.play_arrow,
+                       color: onPressed != null 
+                           ? Colors.white
+                           : Colors.grey[600],
+                       size: 20,
+                     ),
+                     if (isCardio) ...[
+                       const SizedBox(height: 2),
+                       Text(
+                         'EXECUTAR',
+                         style: GoogleFonts.poppins(
+                           color: onPressed != null 
+                               ? Colors.white
+                               : Colors.grey[600],
+                           fontSize: 6,
+                           fontWeight: FontWeight.w600,
+                         ),
+                       ),
+                     ],
+                   ],
                  ),
          ),
        ),

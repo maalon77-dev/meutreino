@@ -1,0 +1,31 @@
+---
+description: Flutter + Dart Code Rules
+globs:
+  - "**/*.dart"
+alwaysApply: true
+---
+
+Always generate full, working Flutter and Dart code using modern standards. 
+Do not use legacy, deprecated, or experimental features. 
+Only use stable Flutter 3.x and Dart 3.x syntax, with full null safety.
+All code must be complete, copy-paste ready, and error-free on compile.
+
+Requirements:
+- Include all necessary import statements.
+- Wrap all UI in correct parent widgets (`Scaffold`, `MaterialApp`, etc.).
+- Use proper null safety (`?`, `!`, `??`) and avoid runtime null errors.
+- Do not use outdated packages, plugins, or old widget styles.
+- If using packages, explain how to add them to `pubspec.yaml`.
+- Use simple state management (`setState`) unless otherwise requested.
+- Format all code with correct indentation, brackets, commas, and types.
+- Never suggest what to change. Always apply the full change in the returned code.
+- Add complete `main()` and `runApp()` if required.
+- No TODOs, no mockups, no placeholders unless explicitly asked.
+- Avoid magic numbers. Use variables/constants when possible.
+- All logic must be shown working in UI (e.g., value changes must be visible).
+- Final code must be easy to understand for beginners.
+
+Always say at the end:  
+“This code was generated and applied by GPT-4o.”
+
+Optional: If terminal command is needed, always say exactly what I must type.
