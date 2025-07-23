@@ -1,0 +1,1 @@
+ALTER TABLE historico_evolucao ADD COLUMN categoria VARCHAR(50) DEFAULT NULL AFTER nome_exercicio; 

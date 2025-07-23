@@ -8,6 +8,7 @@ import 'dart:math'; // Import para Random
 import 'home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
+import 'widgets/optimized_gif_widget.dart';
 
 class TimeInputFormatter extends TextInputFormatter {
   @override
@@ -802,12 +803,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
     final totalSeries = int.tryParse(ex['numero_series']?.toString() ?? '1') ?? 1;
     final tempoDescanso = int.tryParse(ex['tempo_descanso']?.toString() ?? '0') ?? 0;
     
-    // Para exercícios de Cardio, não há descanso - executa diretamente o tempo do exercício
-    if (categoria == 'Cardio / Corrida') {
-      final tempoExercicioMinutos = tempoDescanso; // Para cardio, tempo_descanso é usado como tempo do exercício em minutos
-      if (tempoExercicioMinutos > 0) {
-        final tempoExercicioSegundos = tempoExercicioMinutos * 60; // Converter minutos para segundos
-        iniciarDescanso(tempoExercicioSegundos, isCardio: true); // Usa o mesmo método mas com o tempo do exercício
+    // Para exercícios de Cardio, Alongamento ou Funcional, executa o tempo do exercício
+    if (categoria == 'Cardio / Corrida' || categoria == 'Alongamento / Mobilidade' || categoria == 'Funcional') {
+      final tempoExercicio = tempoDescanso; // Para todos, tempo_descanso é usado como tempo do exercício (min para cardio, seg para outros)
+      if (tempoExercicio > 0) {
+        final tempoExercicioSegundos = categoria == 'Cardio / Corrida' ? tempoExercicio * 60 : tempoExercicio;
+        iniciarDescanso(tempoExercicioSegundos, isCardio: categoria == 'Cardio / Corrida');
       } else {
         // Se não há tempo definido, avança direto
         if (serieAtual < totalSeries) {
@@ -1492,16 +1493,27 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   // Função para calcular o peso total carregado no treino
   double _calcularPesoTotal() {
     double pesoTotal = 0.0;
+    bool temExerciciosComPeso = false;
     
     for (var exercicio in widget.exercicios) {
       if (exercicio['concluido'] == true) {
         final peso = double.tryParse(exercicio['peso']?.toString() ?? '0') ?? 0.0;
-        final series = int.tryParse(exercicio['numero_series']?.toString() ?? '1') ?? 1;
-        final repeticoes = int.tryParse(exercicio['numero_repeticoes']?.toString() ?? '1') ?? 1;
         
-        // Peso total = peso × séries × repetições
-        pesoTotal += peso * series * repeticoes;
+        // Verificar se o exercício tem peso
+        if (peso > 0) {
+          temExerciciosComPeso = true;
+          final series = int.tryParse(exercicio['numero_series']?.toString() ?? '1') ?? 1;
+          final repeticoes = int.tryParse(exercicio['numero_repeticoes']?.toString() ?? '1') ?? 1;
+          
+          // Peso total = peso × séries × repetições
+          pesoTotal += peso * series * repeticoes;
+        }
       }
+    }
+    
+    // Se não há exercícios com peso, retornar 0 para indicar que deve mostrar premio Águia
+    if (!temExerciciosComPeso) {
+      return 0.0;
     }
     
     return pesoTotal;
@@ -1589,6 +1601,119 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
 
   // Função para determinar o prêmio baseado no peso total (SISTEMA RANDÔMICO)
   Map<String, dynamic> _determinarPremio(double pesoTotal) {
+    // Verificar se há exercícios com peso no treino
+    bool temExerciciosComPeso = false;
+    for (var exercicio in widget.exercicios) {
+      if (exercicio['concluido'] == true) {
+        final peso = double.tryParse(exercicio['peso']?.toString() ?? '0') ?? 0.0;
+        if (peso > 0) {
+          temExerciciosComPeso = true;
+          break;
+        }
+      }
+    }
+    
+    // Se não há peso total (treino sem exercícios com peso)
+    if (pesoTotal <= 0) {
+      // Premios especiais para treinos sem peso
+      final premiosSemPeso = [
+        {'nome': 'Lobo', 'emoji': '🐺', 'cor': Color(0xFF2563EB), 'peso': 0.0},
+        {'nome': 'Águia', 'emoji': '🦅', 'cor': Color(0xFF3B82F6), 'peso': 0.0},
+        {'nome': 'Tigre', 'emoji': '🐅', 'cor': Color(0xFFFB923C), 'peso': 0.0},
+        {'nome': 'Leão', 'emoji': '🦁', 'cor': Color(0xFF6B7280), 'peso': 0.0},
+        {'nome': 'Dragão', 'emoji': '🐉', 'cor': Color(0xFFDC2626), 'peso': 0.0},
+        {'nome': 'Raposa', 'emoji': '🦊', 'cor': Color(0xFFF59E0B), 'peso': 0.0},
+        {'nome': 'Cavalo', 'emoji': '🐎', 'cor': Color(0xFF4B5563), 'peso': 0.0},
+      ];
+      
+      // Frases motivacionais para treinos sem peso
+      final frasesMotivacionais = [
+        "Resistir é transformar fadiga em força.",
+        "Cada gota de suor é um passo mais perto da sua melhor versão.",
+        "Você é mais forte do que imagina. Continue.",
+        "Dor é passageira, mas a resistência construída é para sempre.",
+        "Não pare quando estiver cansado. Pare quando tiver terminado.",
+        "Sua mente desiste antes do seu corpo. Prove que ela está errada.",
+        "A constância vence o cansaço.",
+        "A resistência é forjada nos momentos em que você quer desistir.",
+        "O limite só existe até você superá-lo.",
+        "Respire fundo e continue. Um passo de cada vez.",
+        "Desistir não te leva a lugar nenhum. Resistir te leva além.",
+        "Seja teimoso: resista mais um minuto.",
+        "Não é sobre ser o mais rápido, é sobre nunca parar.",
+        "Sua resistência é o seu superpoder.",
+        "Os dias difíceis são os que mais constroem.",
+        "Quanto mais você resiste, mais você cresce.",
+        "Vencer a preguiça é o primeiro treino.",
+        "Sinta o cansaço, mas não se renda a ele.",
+        "A força física começa com a resistência mental.",
+        "Persista. Porque a resistência de hoje é a força de amanhã.",
+      ];
+      
+      final random = Random();
+      final animalEscolhido = premiosSemPeso[random.nextInt(premiosSemPeso.length)];
+      final fraseEscolhida = frasesMotivacionais[random.nextInt(frasesMotivacionais.length)];
+      
+      return {
+        'nome': animalEscolhido['nome'],
+        'emoji': animalEscolhido['emoji'],
+        'cor': animalEscolhido['cor'],
+        'peso': animalEscolhido['peso'],
+        'descricao': fraseEscolhida,
+      };
+    }
+    
+    // Se há exercícios com peso, mas o peso total é baixo, dar chance de premios especiais
+    if (pesoTotal > 0 && pesoTotal < 100 && !temExerciciosComPeso) {
+      // 30% de chance de dar premio especial mesmo com peso baixo
+      final random = Random();
+      if (random.nextDouble() < 0.3) {
+        final premiosSemPeso = [
+          {'nome': 'Lobo', 'emoji': '🐺', 'cor': Color(0xFF2563EB), 'peso': 0.0},
+          {'nome': 'Águia', 'emoji': '🦅', 'cor': Color(0xFF3B82F6), 'peso': 0.0},
+          {'nome': 'Tigre', 'emoji': '🐅', 'cor': Color(0xFFFB923C), 'peso': 0.0},
+          {'nome': 'Leão', 'emoji': '🦁', 'cor': Color(0xFF6B7280), 'peso': 0.0},
+          {'nome': 'Dragão', 'emoji': '🐉', 'cor': Color(0xFFDC2626), 'peso': 0.0},
+          {'nome': 'Raposa', 'emoji': '🦊', 'cor': Color(0xFFF59E0B), 'peso': 0.0},
+          {'nome': 'Cavalo', 'emoji': '🐎', 'cor': Color(0xFF4B5563), 'peso': 0.0},
+        ];
+        
+        final frasesMotivacionais = [
+          "Resistir é transformar fadiga em força.",
+          "Cada gota de suor é um passo mais perto da sua melhor versão.",
+          "Você é mais forte do que imagina. Continue.",
+          "Dor é passageira, mas a resistência construída é para sempre.",
+          "Não pare quando estiver cansado. Pare quando tiver terminado.",
+          "Sua mente desiste antes do seu corpo. Prove que ela está errada.",
+          "A constância vence o cansaço.",
+          "A resistência é forjada nos momentos em que você quer desistir.",
+          "O limite só existe até você superá-lo.",
+          "Respire fundo e continue. Um passo de cada vez.",
+          "Desistir não te leva a lugar nenhum. Resistir te leva além.",
+          "Seja teimoso: resista mais um minuto.",
+          "Não é sobre ser o mais rápido, é sobre nunca parar.",
+          "Sua resistência é o seu superpoder.",
+          "Os dias difíceis são os que mais constroem.",
+          "Quanto mais você resiste, mais você cresce.",
+          "Vencer a preguiça é o primeiro treino.",
+          "Sinta o cansaço, mas não se renda a ele.",
+          "A força física começa com a resistência mental.",
+          "Persista. Porque a resistência de hoje é a força de amanhã.",
+        ];
+        
+        final animalEscolhido = premiosSemPeso[random.nextInt(premiosSemPeso.length)];
+        final fraseEscolhida = frasesMotivacionais[random.nextInt(frasesMotivacionais.length)];
+        
+                 return {
+           'nome': animalEscolhido['nome'],
+           'emoji': animalEscolhido['emoji'],
+           'cor': animalEscolhido['cor'],
+           'peso': animalEscolhido['peso'],
+           'descricao': fraseEscolhida,
+         };
+      }
+    }
+    
     final premiosAnimais = [
       {'nome': 'Porco', 'emoji': '🐖', 'cor': Color(0xFFEC4899), 'peso': 100.0, 'descricao': 'Você carregou o peso de um porco!'},
       {'nome': 'Cavalo', 'emoji': '🐎', 'cor': Color(0xFF4B5563), 'peso': 500.0, 'descricao': 'Você carregou um cavalo inteiro!'},
@@ -1743,14 +1868,17 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 ),
                 const SizedBox(height: 20),
                 
-                // Título
+                // Título especial para premios de resistência
                 Text(
-                  'Parabéns!',
+                  premio['peso'] == 0.0 
+                    ? 'Parabéns! Você ganhou um prêmio de resistência e disciplina!'
+                    : 'Parabéns!',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: premio['peso'] == 0.0 ? 18 : 24,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFF374151),
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 
@@ -1774,73 +1902,77 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 
                 // Descrição
                 Text(
-                  premio['descricao'],
+                  premio['peso'] == 0.0 
+                    ? premio['descricao'].replaceAll('Treino concluído com sucesso! ', '')
+                    : premio['descricao'],
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
                     color: const Color(0xFF6B7280),
+                    fontStyle: premio['peso'] == 0.0 ? FontStyle.italic : FontStyle.normal,
                   ),
                 ),
                 const SizedBox(height: 16),
                 
-                // Peso total carregado
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.fitness_center,
-                            color: const Color(0xFF3B82F6),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Peso total:',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF374151),
+                // Peso total carregado (só mostrar se houver peso)
+                if (pesoTotal > 0)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.fitness_center,
+                              color: const Color(0xFF3B82F6),
+                              size: 20,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Ícone para explicar o cálculo
-                          GestureDetector(
-                            onTap: () => _mostrarExplicacaoCalculo(),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.help_outline,
-                                color: const Color(0xFF3B82F6),
-                                size: 16,
+                            const SizedBox(width: 8),
+                            Text(
+                              'Peso total:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF374151),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${pesoTotal.toStringAsFixed(0)} kg',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF3B82F6),
+                            const SizedBox(width: 8),
+                            // Ícone para explicar o cálculo
+                            GestureDetector(
+                              onTap: () => _mostrarExplicacaoCalculo(),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.help_outline,
+                                  color: const Color(0xFF3B82F6),
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          '${pesoTotal.toStringAsFixed(0)} kg',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF3B82F6),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 24),
                 
                 // Botão para coletar prêmio
@@ -2571,22 +2703,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                         ),
                         child: Stack(
                           children: [
-                            ClipRRect(
+                            OptimizedGifWidget(
+                              imageUrl: img,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
                               borderRadius: BorderRadius.circular(10),
-                              child: img.isNotEmpty
-                                  ? Image.network(
-                                      'https://airfit.online/$img',
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      // Simula GIF pausado mostrando apenas o primeiro frame
-                                      gaplessPlayback: true,
-                                    )
-                                  : Icon(
-                                      Icons.image,
-                                      size: 24,
-                                      color: Colors.grey[500],
-                                    ),
                             ),
                             // Overlay indicando estado do exercício apenas para concluídos
                             if (isConcluido)
@@ -2849,23 +2971,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                child: Container(
                  width: 200,
                  height: 180,
-                 child: ClipRRect(
-                   borderRadius: BorderRadius.circular(20), // Cantos arredondados completos
-                   child: img.isNotEmpty
-                       ? Image.network(
-                           'https://airfit.online/$img',
-                           fit: BoxFit.cover,
-                           width: 200,
-                           height: 180,
-                         )
-                       : Container(
-                           color: Colors.white,
-                           child: Icon(
-                             Icons.image,
-                             size: 80,
-                             color: Colors.grey[400],
-                           ),
-                         ),
+                 child: OptimizedGifWidget(
+                   imageUrl: img,
+                   width: 200,
+                   height: 180,
+                   fit: BoxFit.cover,
+                   borderRadius: BorderRadius.circular(20),
                  ),
                ),
              ),
@@ -2957,26 +3068,13 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
              ),
              child: ClipRRect(
                borderRadius: BorderRadius.circular(24),
-               child: img.isNotEmpty
-                   ? Image.network(
-                       'https://airfit.online/$img',
-                       fit: BoxFit.cover,
-                       width: double.infinity,
-                       height: double.infinity,
-                     )
-                   : Container(
-                       width: double.infinity,
-                       height: double.infinity,
-                       decoration: BoxDecoration(
-                         color: const Color(0xFFE8E8E8),
-                         borderRadius: BorderRadius.circular(24),
-                       ),
-                       child: Icon(
-                         Icons.image,
-                         size: 60,
-                         color: Colors.grey[500],
-                       ),
-                     ),
+               child: OptimizedGifWidget(
+                 imageUrl: img,
+                 width: double.infinity,
+                 height: double.infinity,
+                 fit: BoxFit.cover,
+                 borderRadius: BorderRadius.circular(24),
+               ),
              ),
            ),
            
@@ -3343,11 +3441,12 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
              color: isDark ? const Color(0xFF0F172A) : Colors.white,
              borderRadius: BorderRadius.circular(17),
            ),
-           child: ClipRRect(
+           child: OptimizedGifWidget(
+             imageUrl: img,
+             width: double.infinity,
+             height: double.infinity,
+             fit: BoxFit.cover,
              borderRadius: BorderRadius.circular(17),
-             child: img.isNotEmpty
-                 ? Image.network('https://airfit.online/$img', fit: BoxFit.cover)
-                 : Icon(Icons.image, size: 80, color: isDark ? Colors.grey[600] : Colors.grey[400]),
            ),
          ),
        ),
@@ -4496,7 +4595,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 ),
                               Icon(
                 icon,
-                size: 20,
+                size: 23, // Aumentado de 20 para 23 (13% maior)
                 color: isSelected 
                   ? const Color(0xFF3B82F6) 
                   : const Color(0xFF6B7280),
@@ -4505,7 +4604,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 9, // Aumentado de 8 para 9 (13% maior)
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     color: isSelected 
                       ? const Color(0xFF3B82F6) 
@@ -4545,7 +4644,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         'nome_animal': premio['nome'], // Salvar o nome completo (ex: "15 Tigres")
         'emoji_animal': premio['emoji'],
         'peso_animal': premio['peso'],
-        'peso_total_levantado': pesoTotal,
+        'peso_total_levantado': pesoTotal > 0 ? pesoTotal : 0.0, // Se for Águia, salvar 0
         'data_conquista': DateTime.now().toIso8601String(),
         'nome_treino': widget.nomeTreino,
       });

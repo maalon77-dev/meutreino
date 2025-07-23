@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS historico_evolucao (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    exercicio_id INT NOT NULL,
+    nome_exercicio VARCHAR(255) NOT NULL,
+    peso_anterior DECIMAL(10,2) DEFAULT 0.00,
+    peso_novo DECIMAL(10,2) NOT NULL,
+    repeticoes_anteriores INT DEFAULT 0,
+    repeticoes_novas INT NOT NULL,
+    series_anteriores INT DEFAULT 0,
+    series_novas INT NOT NULL,
+    duracao_anterior DECIMAL(10,2) DEFAULT 0.00,
+    duracao_nova DECIMAL(10,2) DEFAULT 0.00,
+    distancia_anterior DECIMAL(10,2) DEFAULT 0.00,
+    distancia_nova DECIMAL(10,2) DEFAULT 0.00,
+    data_evolucao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    observacoes TEXT,
+    INDEX idx_usuario_exercicio (usuario_id, exercicio_id),
+    INDEX idx_data_evolucao (data_evolucao)
+); 

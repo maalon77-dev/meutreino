@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'treinar_page.dart';
 import 'widgets/adicionar_exercicio_page.dart';
+import 'widgets/optimized_gif_widget.dart';
+import 'widgets/historico_evolucao_page.dart';
 
 class ExerciciosTreinoPage extends StatefulWidget {
   final Map<String, dynamic> treino;
@@ -276,6 +278,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
         'numero_series': '3',
         'tempo_descanso': '60',
         'ordem': (exerciciosApi.length + 1).toString(), // Próxima posição na ordem
+        'grupo': exercicioSelecionado['grupo'] ?? '', // Envia grupo se existir
       };
 
       print('Enviando dados para API: $dadosExercicio');
@@ -587,11 +590,10 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
   }
 
   Future<void> _editarExercicio(BuildContext context, Map<String, dynamic> exercicio, int index) async {
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return _EditarExercicioDialog(
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _EditarExercicioDialog(
           exercicio: exercicio,
           index: index,
           onSave: (updatedData) {
@@ -599,8 +601,20 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
               exerciciosApi[index].addAll(updatedData);
             });
           },
+        ),
+      ),
         );
-      },
+  }
+
+  void _abrirHistoricoEvolucao(Map<String, dynamic> exercicio) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HistoricoEvolucaoPage(
+          exercicioId: exercicio['id'],
+          nomeExercicio: exercicio['nome_do_exercicio'] ?? 'Exercício',
+        ),
+      ),
     );
   }
 
@@ -1019,17 +1033,12 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               // Imagem do exercício
-                              ClipRRect(
+                              OptimizedGifWidget(
+                                imageUrl: foto,
+                                width: 38,
+                                height: 38,
+                                fit: BoxFit.cover,
                                 borderRadius: BorderRadius.circular(8),
-                                child: foto.isNotEmpty
-                                    ? Image.network(
-                                        'https://airfit.online/$foto',
-                                        width: 38,
-                                        height: 38,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => Icon(Icons.image_not_supported, size: 32, color: Colors.grey[400]),
-                                      )
-                                    : Icon(Icons.image, size: 32, color: Colors.grey[400]),
                               ),
                               const SizedBox(width: 12),
                               // Nome e infos
@@ -1095,9 +1104,28 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // Botões editar/excluir
+                              // Botões editar/excluir/histórico
                               Row(
                                 children: [
+                                  // Ícone de histórico de evolução
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () {
+                                        _abrirHistoricoEvolucao(exercicio);
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(6),
+                                        child: Icon(
+                                          Icons.trending_up,
+                                          color: const Color(0xFF10B981),
+                                          size: 22,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
                                   Material(
                                     color: Colors.transparent,
                                     child: InkWell(
@@ -1282,32 +1310,10 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Color(0xFF3B82F6),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.edit, color: Colors.white, size: 24),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(
                       'Editar Exercício',
                       style: TextStyle(
                         color: Colors.white,
@@ -1315,28 +1321,19 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  IconButton(
+        backgroundColor: Color(0xFF3B82F6),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: Colors.white),
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+        ),
                   ),
-                ],
-              ),
-            ),
-            
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
+      body: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: categoriaSelecionada == null
                     ? _buildSelecaoCategoria()
                     : _buildFormularioCategoria(),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1661,8 +1658,8 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormCardio() {
-    final duracaoController = TextEditingController();
-    final distanciaController = TextEditingController();
+    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final distanciaController = TextEditingController(text: widget.exercicio['distancia']?.toString() ?? '');
 
     return Column(
       children: [
@@ -1692,9 +1689,9 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormFuncional() {
-    final repController = TextEditingController();
-    final seriesController = TextEditingController();
-    final descansoController = TextEditingController();
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
 
     return Column(
       children: [
@@ -1738,8 +1735,8 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormAlongamento() {
-    final duracaoController = TextEditingController();
-    final seriesController = TextEditingController();
+    final duracaoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
 
     return Column(
       children: [
@@ -1807,7 +1804,7 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
         _buildTextField(
           'Rounds', 
           roundsController, 
-          'numero_series',
+            'numero_series',
           placeholder: widget.exercicio['numero_series']?.toString() ?? '5',
         ),
         SizedBox(height: 24),
@@ -1822,9 +1819,9 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormIsometria() {
-    final duracaoController = TextEditingController();
-    final seriesController = TextEditingController();
-    final descansoController = TextEditingController();
+    final duracaoController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
 
     return Column(
       children: [
@@ -1868,10 +1865,10 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
   }
 
   Widget _buildFormGenerico() {
-    final repController = TextEditingController();
-    final pesoController = TextEditingController();
-    final seriesController = TextEditingController();
-    final descansoController = TextEditingController();
+    final repController = TextEditingController(text: widget.exercicio['numero_repeticoes']?.toString() ?? '');
+    final pesoController = TextEditingController(text: widget.exercicio['peso']?.toString() ?? '');
+    final seriesController = TextEditingController(text: widget.exercicio['numero_series']?.toString() ?? '');
+    final descansoController = TextEditingController(text: widget.exercicio['tempo_descanso']?.toString() ?? '');
 
     return Column(
       children: [
@@ -1945,6 +1942,8 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
         TextFormField(
           controller: controller,
           keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          enableInteractiveSelection: true,
           decoration: InputDecoration(
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             border: OutlineInputBorder(
@@ -1963,6 +1962,12 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
               fontSize: 14,
             ),
           ),
+          onTap: () {
+            // Garantir que o campo mantenha o foco
+            controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: controller.text.length),
+            );
+          },
         ),
       ],
     );
@@ -2020,22 +2025,48 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
       // Obter o nome da categoria selecionada
       final categoriaNome = categorias.firstWhere((c) => c['id'] == categoriaSelecionada)['nome'];
       
+      // Valores atuais (anteriores)
+      final pesoAnterior = double.tryParse(widget.exercicio['peso']?.toString() ?? '0') ?? 0.0;
+      final repeticoesAnteriores = int.tryParse(widget.exercicio['numero_repeticoes']?.toString() ?? '0') ?? 0;
+      final seriesAnteriores = int.tryParse(widget.exercicio['numero_series']?.toString() ?? '0') ?? 0;
+      
+      // Para duração, verificar se é isometria (usa numero_repeticoes como duração)
+      final categoria = widget.exercicio['categoria']?.toString().toLowerCase() ?? '';
+      final isIsometria = categoria == 'isometria';
+      final duracaoAnterior = isIsometria 
+          ? double.tryParse(widget.exercicio['numero_repeticoes']?.toString() ?? '0') ?? 0.0
+          : double.tryParse(widget.exercicio['tempo_descanso']?.toString() ?? '0') ?? 0.0;
+      final distanciaAnterior = double.tryParse(widget.exercicio['distancia']?.toString() ?? '0') ?? 0.0;
+      
+      // Novos valores
+      final pesoNovo = double.tryParse(controllers['peso']!.text.isNotEmpty ? controllers['peso']!.text : widget.exercicio['peso']?.toString() ?? '0') ?? 0.0;
+      final repeticoesNovas = int.tryParse(controllers['numero_repeticoes']!.text.isNotEmpty ? controllers['numero_repeticoes']!.text : widget.exercicio['numero_repeticoes']?.toString() ?? '0') ?? 0;
+      final seriesNovas = int.tryParse(controllers['numero_series']!.text.isNotEmpty ? controllers['numero_series']!.text : widget.exercicio['numero_series']?.toString() ?? '0') ?? 0;
+      
+      // Para duração, verificar se é isometria (usa numero_repeticoes como duração)
+      final duracaoNova = isIsometria
+          ? double.tryParse(controllers['numero_repeticoes']!.text.isNotEmpty ? controllers['numero_repeticoes']!.text : widget.exercicio['numero_repeticoes']?.toString() ?? '0') ?? 0.0
+          : double.tryParse(controllers['tempo_descanso']!.text.isNotEmpty ? controllers['tempo_descanso']!.text : widget.exercicio['tempo_descanso']?.toString() ?? '0') ?? 0.0;
+      final distanciaNova = controllers.containsKey('distancia') 
+          ? double.tryParse(controllers['distancia']!.text.isNotEmpty ? controllers['distancia']!.text : widget.exercicio['distancia']?.toString() ?? '0') ?? 0.0
+          : 0.0;
+      
       // Preparar dados para envio
       final dados = {
         'tabela': 'exercicios',
         'acao': 'atualizar',
         'id': widget.exercicio['id'].toString(),
-        'numero_repeticoes': controllers['numero_repeticoes']!.text,
-        'peso': controllers['peso']!.text,
-        'numero_series': controllers['numero_series']!.text,
-        'tempo_descanso': controllers['tempo_descanso']!.text,
+        'numero_repeticoes': controllers['numero_repeticoes']!.text.isNotEmpty ? controllers['numero_repeticoes']!.text : widget.exercicio['numero_repeticoes']?.toString() ?? '',
+        'peso': controllers['peso']!.text.isNotEmpty ? controllers['peso']!.text : widget.exercicio['peso']?.toString() ?? '',
+        'numero_series': controllers['numero_series']!.text.isNotEmpty ? controllers['numero_series']!.text : widget.exercicio['numero_series']?.toString() ?? '',
+        'tempo_descanso': controllers['tempo_descanso']!.text.isNotEmpty ? controllers['tempo_descanso']!.text : widget.exercicio['tempo_descanso']?.toString() ?? '',
         'categoria': categoriaNome, // Salvar a categoria selecionada
         'editado': '1', // Marcar como editado no banco de dados
       };
       
       // Adicionar distância se existir
       if (controllers.containsKey('distancia')) {
-        dados['distancia'] = controllers['distancia']!.text;
+        dados['distancia'] = controllers['distancia']!.text.isNotEmpty ? controllers['distancia']!.text : widget.exercicio['distancia']?.toString() ?? '';
       }
       
       final response = await http.post(
@@ -2045,28 +2076,51 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
       
       final data = jsonDecode(response.body);
       if (data['sucesso'] == true) {
+        // Verificar se houve mudança (qualquer alteração) e salvar no histórico
+        final houveMudanca = pesoNovo != pesoAnterior || 
+                             repeticoesNovas != repeticoesAnteriores || 
+                             seriesNovas != seriesAnteriores ||
+                             duracaoNova != duracaoAnterior ||
+                             distanciaNova != distanciaAnterior;
+        
+        if (houveMudanca) {
+          await _salvarEvolucao(
+            pesoAnterior: pesoAnterior,
+            pesoNovo: pesoNovo,
+            repeticoesAnteriores: isIsometria ? 0 : repeticoesAnteriores,
+            repeticoesNovas: isIsometria ? 0 : repeticoesNovas,
+            seriesAnteriores: seriesAnteriores,
+            seriesNovas: seriesNovas,
+            duracaoAnterior: duracaoAnterior,
+            duracaoNova: duracaoNova,
+            distanciaAnterior: distanciaAnterior,
+            distanciaNova: distanciaNova,
+            nomeExercicio: widget.exercicio['nome_do_exercicio'] ?? 'Exercício',
+          );
+        }
+        
         Navigator.of(context).pop();
         
         // Atualizar dados locais
         final dadosLocais = {
-          'numero_repeticoes': controllers['numero_repeticoes']!.text,
-          'peso': controllers['peso']!.text,
-          'numero_series': controllers['numero_series']!.text,
-          'tempo_descanso': controllers['tempo_descanso']!.text,
+          'numero_repeticoes': controllers['numero_repeticoes']!.text.isNotEmpty ? controllers['numero_repeticoes']!.text : widget.exercicio['numero_repeticoes']?.toString() ?? '',
+          'peso': controllers['peso']!.text.isNotEmpty ? controllers['peso']!.text : widget.exercicio['peso']?.toString() ?? '',
+          'numero_series': controllers['numero_series']!.text.isNotEmpty ? controllers['numero_series']!.text : widget.exercicio['numero_series']?.toString() ?? '',
+          'tempo_descanso': controllers['tempo_descanso']!.text.isNotEmpty ? controllers['tempo_descanso']!.text : widget.exercicio['tempo_descanso']?.toString() ?? '',
           'categoria': categoriaNome,
           'editado': true, // Marcar como editado
         };
         
         // Adicionar distância se existir
         if (controllers.containsKey('distancia')) {
-          dadosLocais['distancia'] = controllers['distancia']!.text;
+          dadosLocais['distancia'] = controllers['distancia']!.text.isNotEmpty ? controllers['distancia']!.text : widget.exercicio['distancia']?.toString() ?? '';
         }
         
         widget.onSave(dadosLocais);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exercício atualizado com sucesso!'),
+            content: Text(houveMudanca ? 'Exercício atualizado e histórico salvo!' : 'Exercício atualizado com sucesso!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -2088,5 +2142,66 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
     }
     
     setState(() => loading = false);
+  }
+
+  Future<void> _salvarEvolucao({
+    required double pesoAnterior,
+    required double pesoNovo,
+    required int repeticoesAnteriores,
+    required int repeticoesNovas,
+    required int seriesAnteriores,
+    required int seriesNovas,
+    required double duracaoAnterior,
+    required double duracaoNova,
+    required double distanciaAnterior,
+    required double distanciaNova,
+    required String nomeExercicio,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      if (usuarioId == null) {
+        print('Usuário não identificado para salvar evolução');
+        return;
+      }
+
+      final dadosEvolucao = {
+        'usuario_id': usuarioId,
+        'exercicio_id': widget.exercicio['id'],
+        'nome_exercicio': nomeExercicio,
+        'categoria': widget.exercicio['categoria'] ?? '',
+        'peso_anterior': pesoAnterior,
+        'peso_novo': pesoNovo,
+        'repeticoes_anteriores': repeticoesAnteriores,
+        'repeticoes_novas': repeticoesNovas,
+        'series_anteriores': seriesAnteriores,
+        'series_novas': seriesNovas,
+        'duracao_anterior': duracaoAnterior,
+        'duracao_nova': duracaoNova,
+        'distancia_anterior': distanciaAnterior,
+        'distancia_nova': distanciaNova,
+        'observacoes': '',
+      };
+
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/salvar_evolucao.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(dadosEvolucao),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['sucesso'] == true) {
+          print('Evolução salva com sucesso: ${data['id_evolucao']}');
+        } else {
+          print('Erro ao salvar evolução: ${data['mensagem']}');
+        }
+      } else {
+        print('Erro HTTP ao salvar evolução: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Erro ao salvar evolução: $e');
+    }
   }
 } 

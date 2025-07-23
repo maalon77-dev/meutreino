@@ -691,30 +691,43 @@ class _PremiosPageState extends State<PremiosPage> {
               ),
             ),
             
-            // Peso total levantado
+            // Peso total levantado ou medalha para prêmios especiais
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
+                color: pesoTotal == 0 
+                    ? const Color(0xFFF59E0B).withOpacity(0.1)  // Cor dourada para medalha
+                    : const Color(0xFF10B981).withOpacity(0.1), // Cor verde para peso
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 children: [
-                  Text(
-                    _formatarPeso(pesoTotal),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
-                  const Text(
-                    'Total',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
+                  // Mostrar medalha se peso for 0, senão mostrar peso
+                  pesoTotal == 0
+                      ? const Icon(
+                          Icons.emoji_events,
+                          size: 24,
+                          color: Color(0xFFF59E0B),
+                        )
+                      : Column(
+                          children: [
+                            Text(
+                              _formatarPeso(pesoTotal),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                            const Text(
+                              'Total',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
                 ],
               ),
             ),

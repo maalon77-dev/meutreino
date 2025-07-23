@@ -206,7 +206,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                               Icon(
                 icon,
-                size: 20,
+                size: 23, // Aumentado de 20 para 23 (13% maior)
                 color: isSelected 
                   ? const Color(0xFF3B82F6) 
                   : const Color(0xFF6B7280),
@@ -215,7 +215,7 @@ class _HomePageState extends State<HomePage> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 9, // Aumentado de 8 para 9 (13% maior)
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     color: isSelected 
                       ? const Color(0xFF3B82F6) 

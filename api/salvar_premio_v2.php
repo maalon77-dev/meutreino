@@ -24,12 +24,19 @@ try {
 
 // Verificar se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $raw_input = file_get_contents('php://input');
+    error_log("=== SALVAR PREMIO ===");
+    error_log("Raw input: $raw_input");
+    
+    $input = json_decode($raw_input, true);
     
     if (!$input) {
+        error_log("Erro: Dados inválidos - JSON decode falhou");
         echo json_encode(['erro' => 'Dados inválidos']);
         exit;
     }
+    
+    error_log("Input decodificado: " . print_r($input, true));
     
     $usuario_id = $input['usuario_id'] ?? null;
     $nome_animal = $input['nome_animal'] ?? null;
@@ -39,29 +46,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_conquista = $input['data_conquista'] ?? null;
     $nome_treino = $input['nome_treino'] ?? null;
     
-    // Novos campos para troféus de metas
-    $tipo_conquista = $input['tipo_conquista'] ?? 'treino'; // 'treino' ou 'meta'
-    $nome_meta = $input['nome_meta'] ?? null;
-    $raridade_trofeu = $input['raridade_trofeu'] ?? null;
-    $categoria_trofeu = $input['categoria_trofeu'] ?? null;
-    $descricao_trofeu = $input['descricao_trofeu'] ?? null;
-    $mensagem_motivacional = $input['mensagem_motivacional'] ?? null;
+    error_log("Dados extraídos:");
+    error_log("usuario_id: $usuario_id");
+    error_log("nome_animal: $nome_animal");
+    error_log("emoji_animal: $emoji_animal");
+    error_log("peso_animal: $peso_animal");
+    error_log("peso_total_levantado: $peso_total_levantado");
+    error_log("data_conquista: $data_conquista");
+    error_log("nome_treino: $nome_treino");
     
-    // Validação diferente para treinos e metas
-    if ($tipo_conquista === 'treino') {
-        if (!$usuario_id || !$nome_animal || !$peso_animal || !$peso_total_levantado) {
-            echo json_encode(['erro' => 'Dados obrigatórios não fornecidos para treino']);
-            exit;
-        }
-    } else if ($tipo_conquista === 'meta') {
-        if (!$usuario_id || !$nome_animal || !$nome_meta) {
-            echo json_encode(['erro' => 'Dados obrigatórios não fornecidos para meta']);
-            exit;
-        }
+    // Campo para tipo de conquista (simplificado)
+    $tipo_conquista = $input['tipo_conquista'] ?? 'treino'; // 'treino' ou 'meta'
+    
+    // Validação simplificada
+    if (!$usuario_id || !$nome_animal) {
+        echo json_encode(['erro' => 'Dados obrigatórios não fornecidos (usuario_id e nome_animal são obrigatórios)']);
+        exit;
     }
+    // Para treinos, peso_animal e peso_total_levantado podem ser 0 (caso da Águia)
+    if ($peso_animal === null) $peso_animal = 0.0;
+    if ($peso_total_levantado === null) $peso_total_levantado = 0.0;
     
     try {
-        // Verificar se a tabela existe, se não, criar
+        // Verificar se a tabela existe, se não, criar com estrutura simples
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS premios_conquistados (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,40 +79,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 peso_total_levantado DECIMAL(10,2) NULL,
                 data_conquista DATETIME NOT NULL,
                 nome_treino VARCHAR(100) NULL,
-                tipo_conquista ENUM('treino', 'meta') DEFAULT 'treino',
-                nome_meta VARCHAR(100) NULL,
-                raridade_trofeu INT NULL,
-                categoria_trofeu VARCHAR(50) NULL,
-                descricao_trofeu TEXT NULL,
-                mensagem_motivacional TEXT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
         
-        // Inserir o prêmio
-        $stmt = $pdo->prepare("
-            INSERT INTO premios_conquistados 
-            (usuario_id, nome_animal, emoji_animal, peso_animal, peso_total_levantado, data_conquista, nome_treino, tipo_conquista, nome_meta, raridade_trofeu, categoria_trofeu, descricao_trofeu, mensagem_motivacional) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+        // Inserir o prêmio (apenas campos que existem na tabela atual)
+        $query = "INSERT INTO premios_conquistados 
+            (usuario_id, nome_animal, emoji_animal, peso_animal, peso_total_levantado, data_conquista, nome_treino) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)";
         
-        $stmt->execute([
+        error_log("Query: $query");
+        
+        $stmt = $pdo->prepare($query);
+        
+        $params = [
             $usuario_id,
             $nome_animal,
             $emoji_animal,
             $peso_animal,
             $peso_total_levantado,
             $data_conquista ?: date('Y-m-d H:i:s'),
-            $nome_treino,
-            $tipo_conquista,
-            $nome_meta,
-            $raridade_trofeu,
-            $categoria_trofeu,
-            $descricao_trofeu,
-            $mensagem_motivacional
-        ]);
+            $nome_treino
+        ];
+        
+        error_log("Parâmetros: " . print_r($params, true));
+        
+        $stmt->execute($params);
         
         $id = $pdo->lastInsertId();
+        
+        error_log("Prêmio salvo com sucesso. ID: $id");
         
         echo json_encode([
             'sucesso' => true,
@@ -114,7 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         
     } catch(PDOException $e) {
+        error_log("Erro PDO ao salvar prêmio: " . $e->getMessage());
         echo json_encode(['erro' => 'Erro ao salvar prêmio: ' . $e->getMessage()]);
+    } catch(Exception $e) {
+        error_log("Erro geral ao salvar prêmio: " . $e->getMessage());
+        echo json_encode(['erro' => 'Erro geral ao salvar prêmio: ' . $e->getMessage()]);
     }
     
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {

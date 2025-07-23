@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'lista_exercicios_categoria_page.dart';
+import 'grupos_categoria_page.dart';
+import 'optimized_gif_widget.dart';
 
 class AdicionarExercicioPage extends StatefulWidget {
   const AdicionarExercicioPage({Key? key}) : super(key: key);
@@ -75,44 +77,16 @@ class _AdicionarExercicioPageState extends State<AdicionarExercicioPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) {
-          // Tem grupos, mostrar lista de grupos
-          showModalBottomSheet(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          // Tem grupos, navega para nova tela de grupos
+          final exercicioSelecionado = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GruposCategoriaPage(categoria: categoria, grupos: List<String>.from(data)),
             ),
-            builder: (context) {
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                shrinkWrap: true,
-                children: [
-                  Text('Selecione um grupo', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  ...data.map<Widget>((grupo) => Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        elevation: 2,
-                        child: ListTile(
-                          title: Text(grupo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                          leading: const Icon(Icons.group_work, color: Color(0xFF374151)),
-                          trailing: const Icon(Icons.chevron_right, color: Color(0xFF374151)),
-                          onTap: () async {
-                            Navigator.pop(context); // Fecha o bottom sheet
-                            final exercicioSelecionado = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ListaExerciciosCategoriaPage(categoria: categoria, grupo: grupo),
-                              ),
-                            );
-                            if (exercicioSelecionado != null) {
-                              Navigator.pop(context, exercicioSelecionado);
-                            }
-                          },
-                        ),
-                      )),
-                ],
-              );
-            },
           );
+          if (exercicioSelecionado != null) {
+            Navigator.pop(context, exercicioSelecionado);
+          }
         } else {
           // Não tem grupos, vai direto para lista de exercícios
           final exercicioSelecionado = await Navigator.push(
@@ -127,7 +101,7 @@ class _AdicionarExercicioPageState extends State<AdicionarExercicioPage> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao buscar grupos: ${response.statusCode}')),
+          SnackBar(content: Text('Erro ao buscar grupos:  {response.statusCode}')),
         );
       }
     } catch (e) {
