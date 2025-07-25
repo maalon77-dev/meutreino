@@ -782,7 +782,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     ),
                     const SizedBox(height: 20),
                     
-                    // Botão Iniciar Treino com cores modernas
+                    // Botão Iniciar Treino com cores modernas e ícone de play
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -861,6 +861,8 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            Icon(Icons.play_arrow, size: 20),
+                            const SizedBox(width: 8),
                             Text(
                               'INICIAR TREINO AGORA',
                               style: TextStyle(
@@ -868,56 +870,11 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 20),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Botão Adicionar Exercício com cores modernas
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final resultado = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AdicionarExercicioPage(),
-                            ),
-                          );
-                          // Aqui você pode tratar o resultado (exercício selecionado)
-                          if (resultado != null) {
-                            await _adicionarExercicioAoTreino(resultado);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3B82F6),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'ADICIONAR EXERCÍCIO',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -1212,6 +1169,53 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              
+              // Botão Adicionar Exercício menor no final
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final resultado = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AdicionarExercicioPage(),
+                          ),
+                        );
+                        // Aqui você pode tratar o resultado (exercício selecionado)
+                        if (resultado != null) {
+                          await _adicionarExercicioAoTreino(resultado);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'ADICIONAR EXERCÍCIO',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
