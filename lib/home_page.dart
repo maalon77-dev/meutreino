@@ -130,7 +130,6 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       appBar: AppBarLogo(
-        onMenu: () => Scaffold.of(context).openDrawer(),
         centerTitle: true,
       ),
       body: Container(

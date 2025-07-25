@@ -21,8 +21,20 @@ class AppBarLogo extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.menu, color: Color(0xFF374151)),
-        onPressed: onMenu ?? () {
-          Scaffold.of(context).openDrawer();
+        onPressed: () {
+          print('🔍 Botão do menu pressionado!');
+          if (onMenu != null) {
+            print('🔍 Chamando onMenu callback');
+            onMenu!();
+          } else {
+            print('🔍 Tentando abrir drawer com Scaffold.of(context)');
+            try {
+              Scaffold.of(context).openDrawer();
+              print('🔍 Drawer aberto com sucesso');
+            } catch (e) {
+              print('❌ Erro ao abrir drawer: $e');
+            }
+          }
         },
       ),
       title: Center(
