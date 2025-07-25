@@ -932,7 +932,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Botão Adicionar Exercício cinza quando não há exercícios
+                      // Botão Adicionar Exercício quando não há exercícios
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: SizedBox(
@@ -945,14 +945,13 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                   builder: (context) => AdicionarExercicioPage(),
                                 ),
                               );
-                              // Aqui você pode tratar o resultado (exercício selecionado)
                               if (resultado != null) {
                                 await _adicionarExercicioAoTreino(resultado);
                               }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF),
-                              foregroundColor: Colors.white,
+                              foregroundColor: isDark ? Colors.white : Colors.black,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
