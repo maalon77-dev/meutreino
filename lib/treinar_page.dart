@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
 import 'widgets/optimized_gif_widget.dart';
 import 'treinos_prontos_page.dart';
+import 'widgets/app_bar_logo.dart';
 
 
 class TimeInputFormatter extends TextInputFormatter {
@@ -105,6 +106,9 @@ class _TreinarPageState extends State<TreinarPage> {
   bool isLoading = true;
   Map<int, String> nomesTreinos = {};
   bool isReordering = false;
+  
+  // GlobalKey para o Scaffold
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -3416,6 +3420,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   Widget build(BuildContext context) {
     final exs = widget.exercicios;
     return Scaffold(
+      key: _scaffoldKey,
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
@@ -3426,31 +3431,8 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
           Navigator.pop(context);
         },
       ),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: IconThemeData(
-          color: const Color(0xFF374151),
-        ),
-        title: Center(
-          child: Image.asset(
-            'assets/backgrounds/logo.png',
-            height: 32,
-            fit: BoxFit.contain,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: const Color(0xFF374151),
-            ),
-            onPressed: () {
-              // Função de notificação
-            },
-          ),
-        ],
+      appBar: AppBarLogo(
+        onMenu: () => _scaffoldKey.currentState?.openDrawer(),
       ),
       body: Container(
         decoration: BoxDecoration(

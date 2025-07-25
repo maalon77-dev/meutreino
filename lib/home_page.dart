@@ -33,6 +33,9 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic>? _treinoSelecionado;
   List<Map<String, dynamic>> _exerciciosSelecionados = [];
   bool _carregandoExercicios = false;
+  
+  // GlobalKey para o Scaffold
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -117,6 +120,7 @@ class _HomePageState extends State<HomePage> {
       conteudoCentral = _pages[_selectedIndex];
     }
     return Scaffold(
+      key: _scaffoldKey,
       extendBody: true,
       backgroundColor: Colors.transparent,
       drawer: CustomDrawer(
@@ -130,6 +134,7 @@ class _HomePageState extends State<HomePage> {
         },
       ),
       appBar: AppBarLogo(
+        onMenu: () => _scaffoldKey.currentState?.openDrawer(),
         centerTitle: true,
       ),
       body: Container(

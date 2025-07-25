@@ -918,6 +918,16 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    
+                    // Texto de instrução
+                    Text(
+                      'Arraste e solte para ordenar a sequência dos exercícios',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
@@ -978,7 +988,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                   ),
                 ),
               )
-            else ...[
+            else
               SliverToBoxAdapter(
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -1200,21 +1210,6 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                   ),
                 ),
               ),
-              // Mensagem de arraste e solte no final da lista
-              SliverToBoxAdapter(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  child: Text(
-                    'Arraste e solte para ordenar a sequência dos exercícios',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
