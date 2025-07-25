@@ -935,11 +935,26 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                   ),
                 ),
               )
-            else
+                          else
               SliverToBoxAdapter(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  child: ReorderableListView.builder(
+                child: Column(
+                  children: [
+                    // Texto de instrução pequeno acima da lista
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        'Arraste para ordenar',
+                        style: TextStyle(
+                          color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      child: ReorderableListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     onReorder: _reordenarExercicios,
@@ -1155,23 +1170,12 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                       );
                     },
                   ),
+                    ),
+                  ],
                 ),
               ),
               
-              // Texto de instrução no final da lista
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Arraste e solte para ordenar a sequência dos exercícios',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
+
               
               // Botão Adicionar Exercício menor no final
               SliverToBoxAdapter(
