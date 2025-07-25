@@ -103,7 +103,7 @@ class TrofeuService {
   static String obterMensagemMotivacional() {
     final mensagens = [
       'Cada passo conta! Continue firme na sua jornada! 💪',
-      'A disciplina é a ponte entre objetivos e realizações! 🌉',
+              'A força é a ponte entre objetivos e realizações! 🌉',
       'Você está mais forte do que imagina! 🔥',
       'O progresso não acontece da noite para o dia, mas acontece! ⭐',
       'Cada dia é uma nova oportunidade de ser melhor! 🌅',

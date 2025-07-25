@@ -9,6 +9,8 @@ import 'home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
 import 'widgets/optimized_gif_widget.dart';
+import 'treinos_prontos_page.dart';
+
 
 class TimeInputFormatter extends TextInputFormatter {
   @override
@@ -102,6 +104,7 @@ class _TreinarPageState extends State<TreinarPage> {
   List<Map<String, dynamic>> treinosUsuario = [];
   bool isLoading = true;
   Map<int, String> nomesTreinos = {};
+  bool isReordering = false;
 
   @override
   void initState() {
@@ -188,6 +191,90 @@ class _TreinarPageState extends State<TreinarPage> {
 
   String _obterNomeTreino(Map<String, dynamic> treino) {
     return treino['nome_treino'] ?? 'Treino';
+  }
+
+  Future<void> _salvarNovaOrdem() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      if (usuarioId == null) return;
+
+      // Preparar dados para enviar
+      final dados = treinosUsuario.asMap().entries.map((entry) {
+        return {
+          'id': entry.value['id'],
+          'ordem': entry.key,
+        };
+      }).toList();
+
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/reorder_exercicios.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'usuario_id': usuarioId,
+          'treinos': dados,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          print('Ordem dos treinos salva com sucesso!');
+          // Feedback visual para o usuário
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('Ordem dos treinos atualizada!'),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          }
+        } else {
+          print('Erro ao salvar ordem: ${result['message']}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erro ao salvar ordem: ${result['message']}'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        print('Erro na requisição: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erro ao conectar com o servidor'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Erro ao salvar ordem dos treinos: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao salvar ordem dos treinos'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _abrirExerciciosTreino(BuildContext context, Map<String, dynamic> treino) async {
@@ -290,7 +377,17 @@ class _TreinarPageState extends State<TreinarPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Seção de treinos do usuário
-            if (treinosUsuario.isNotEmpty) ...[
+            if (isLoading) ...[
+              // Mostrar loading enquanto carrega
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF3B82F6),
+                  ),
+                ),
+              ),
+            ] else if (treinosUsuario.isNotEmpty) ...[
               Text(
                 'Meus Treinos',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -299,14 +396,179 @@ class _TreinarPageState extends State<TreinarPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...treinosUsuario.map((treino) => 
-                _treinoCard(
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
+                    }
+                    final item = treinosUsuario.removeAt(oldIndex);
+                    treinosUsuario.insert(newIndex, item);
+                  });
+                  _salvarNovaOrdem();
+                },
+                itemCount: treinosUsuario.length,
+                itemBuilder: (context, index) {
+                  final treino = treinosUsuario[index];
+                  return _treinoCard(
                   context,
                   treino: treino,
                   nomeTreino: _obterNomeTreino(treino),
-                )
-              ).toList(),
+                    index: index,
+                    key: ValueKey(treino['id']),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              // Aviso de arrastar para reordenar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B7280).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF6B7280).withOpacity(0.15),
+                    width: 0.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.swap_vert,
+                      size: 12,
+                      color: const Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Arrastar para reordenar',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
+              // Mensagem adicional para orientar a criar mais treinos (só quando não está carregando)
+              if (!isLoading) Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F9FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF3B82F6).withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline,
+                      color: const Color(0xFF3B82F6),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Dica: Crie diferentes tipos de treinos para variar seus exercícios!',
+                        style: TextStyle(
+                          color: const Color(0xFF1E40AF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ] else if (!isLoading) ...[
+              // Mensagem quando não há treinos cadastrados
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.fitness_center_outlined,
+                        size: 48,
+                        color: const Color(0xFF3B82F6),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Nenhum treino cadastrado',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF374151),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Você ainda não criou nenhum treino personalizado. Crie seu primeiro treino para começar a treinar!',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF6B7280),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // Aqui você pode adicionar navegação para criar treino
+                        // Por enquanto, vou mostrar um snackbar
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Funcionalidade de criar treino será implementada em breve!'),
+                            backgroundColor: const Color(0xFF3B82F6),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 20),
+                      label: Text(
+                        'Criar Meu Primeiro Treino',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
             
             // Banner Treinos Personalizados
@@ -365,7 +627,10 @@ class _TreinarPageState extends State<TreinarPage> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        print('DEBUG: Botão Criar Treino clicado');
+                        _mostrarDialogoCriarTreino();
+                      },
                       child: Text(
                         'Criar Treino',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -452,7 +717,13 @@ class _TreinarPageState extends State<TreinarPage> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const TreinosProntosPage(),
+                          ),
+                        );
+                      },
                       child: Text(
                         'Treinos Prontos',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -474,20 +745,36 @@ class _TreinarPageState extends State<TreinarPage> {
   Widget _treinoCard(BuildContext context, {
     required Map<String, dynamic> treino,
     required String nomeTreino,
+    int index = 0,
+    Key? key,
   }) {
-    return GestureDetector(
+    return TweenAnimationBuilder<double>(
+      key: key,
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 350 + (index * 60)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
       onTap: () => _abrirExerciciosTreino(context, treino),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
@@ -498,66 +785,714 @@ class _TreinarPageState extends State<TreinarPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+              // Número da ordem
             Container(
-              padding: const EdgeInsets.all(12),
+                width: 28,
+                height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF3B82F6).withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF3B82F6),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ),
-              child: const Icon(
-                Icons.fitness_center,
-                size: 32,
-                color: Color(0xFF3B82F6),
-              ),
-            ),
-            const SizedBox(width: 16),
+              const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
                     nomeTreino,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: GoogleFonts.inter(
                       color: const Color(0xFF1F2937),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              letterSpacing: -0.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${treino['total_exercicios'] ?? 0} exercícios',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF64748B),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _mostrarDialogoEditarTreino(treino),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    color: Color(0xFF3B82F6),
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _mostrarDialogoCriarTreino() async {
+    print('DEBUG: Função _mostrarDialogoCriarTreino chamada');
+    final TextEditingController nomeController = TextEditingController();
+    bool isLoading = false;
+    bool nomeVazio = true;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+          children: [
+            Container(
+                    padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                      Icons.add_circle_outline,
+                color: Color(0xFF3B82F6),
+                      size: 24,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Criar Novo Treino',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Digite o nome do seu novo treino:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nomeController,
+                    onChanged: (value) {
+                      setState(() {
+                        nomeVazio = value.trim().isEmpty;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Ex: Treino A - Peito e Tríceps',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF3B82F6)),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) async {
+                      if (nomeController.text.trim().isNotEmpty) {
+                        await _criarTreino(nomeController.text.trim());
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: Color(0xFF6B7280)),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading || nomeVazio
+                      ? null
+                      : () async {
+                          setState(() => isLoading = true);
+                          await _criarTreino(nomeController.text.trim());
+                          Navigator.of(context).pop();
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Criar Treino',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _criarTreino(String nomeTreino) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      if (usuarioId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Usuário não identificado'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/api.php'),
+        body: {
+          'tabela': 'treinos',
+          'acao': 'inserir',
+          'usuario_id': usuarioId.toString(),
+          'nome_treino': nomeTreino,
+          'estatisticas': '',
+          'id_exercicios': '',
+          'foto_treino': 'img/treino-feminino/14.jpg',
+          'ordem': '0',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      print('DEBUG: Resposta da API: $data');
+      
+      if (data['sucesso'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Treino "$nomeTreino" criado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Recarregar a lista de treinos
+        _carregarTreinosUsuario();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao criar treino: ${data['erro'] ?? 'Erro desconhecido'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro de conexão: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _mostrarDialogoEditarTreino(Map<String, dynamic> treino) async {
+    final TextEditingController nomeController = TextEditingController(text: treino['nome_treino'] ?? '');
+    bool isLoading = false;
+    bool nomeVazio = nomeController.text.trim().isEmpty;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      color: Color(0xFF3B82F6),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Editar Treino',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Digite o novo nome do treino:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nomeController,
+                    onChanged: (value) {
+                      setState(() {
+                        nomeVazio = value.trim().isEmpty;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Ex: Treino A - Peito e Tríceps',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF3B82F6)),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) async {
+                      if (nomeController.text.trim().isNotEmpty) {
+                        await _editarTreino(treino['id'], nomeController.text.trim());
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                  const SizedBox(height: 16),
+                  // Botões de Ação
                   Row(
                     children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF59E0B),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            shadowColor: const Color(0xFFF59E0B).withOpacity(0.3),
+                          ),
+                          child: const Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading || nomeVazio
+                              ? null
+                              : () async {
+                                  setState(() => isLoading = true);
+                                  await _editarTreino(treino['id'], nomeController.text.trim());
+                                  Navigator.of(context).pop();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3B82F6),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            shadowColor: const Color(0xFF3B82F6).withOpacity(0.3),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Salvar',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Botão Excluir
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+                      label: const Text(
+                        'Excluir Treino',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6B7280),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                        shadowColor: const Color(0xFF6B7280).withOpacity(0.3),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _mostrarDialogoExcluirTreino(treino);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editarTreino(int treinoId, String novoNome) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/api.php'),
+        body: {
+          'tabela': 'treinos',
+          'acao': 'atualizar',
+          'id': treinoId.toString(),
+          'nome_treino': novoNome,
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      print('DEBUG: Resposta da API (editar): $data');
+      
+      if (data['sucesso'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Treino atualizado para "$novoNome" com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Recarregar a lista de treinos
+        _carregarTreinosUsuario();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao atualizar treino: ${data['erro'] ?? 'Erro desconhecido'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro de conexão: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _mostrarDialogoExcluirTreino(Map<String, dynamic> treino) {
+    int segundosRestantes = 10;
+    late StateSetter setStateDialog;
+    Timer? timer;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            setStateDialog = setState;
+            if (timer == null) {
+              timer = Timer.periodic(const Duration(seconds: 1), (t) {
+                if (segundosRestantes > 0) {
+                  setState(() {
+                    segundosRestantes--;
+                  });
+                } else {
+                  timer?.cancel();
+                }
+              });
+            }
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                    children: [
+                      Container(
+                    padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3B82F6).withOpacity(0.08),
+                      color: const Color(0xFFEF4444).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Row(
+                    child: const Icon(
+                      Icons.delete_forever,
+                      color: Color(0xFFEF4444),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Excluir Treino',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.list_alt, size: 16, color: Color(0xFF3B82F6)),
-                            const SizedBox(width: 4),
                             Text(
-                              '${treino['total_exercicios'] ?? 0} exercícios',
+                    'Tem certeza que deseja excluir o treino "${treino['nome_treino']}"?',
                               style: const TextStyle(
-                                color: Color(0xFF3B82F6),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3CD),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFFFEAA7),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFF856404),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Esta ação não pode ser desfeita. Todos os exercícios associados serão removidos.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF856404),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Todas as estatísticas de progresso também serão deletadas.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFFD97706),
+                                  fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.chevron_right, color: Color(0xFF94A3B8), size: 28),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    timer?.cancel();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: segundosRestantes == 0
+                      ? () {
+                          timer?.cancel();
+                          Navigator.of(context).pop();
+                          _excluirTreino(treino);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: segundosRestantes == 0
+                      ? const Text(
+                          'Excluir',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : Text(
+                          'Aguarde (${segundosRestantes}s)',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      timer?.cancel();
+    });
+  }
+
+  Future<void> _excluirTreino(Map<String, dynamic> treino) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://airfit.online/api/api.php'),
+        body: {
+          'tabela': 'treinos',
+          'acao': 'deletar', // Corrigido para a ação correta da API
+          'id': treino['id'].toString(),
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      print('DEBUG: Resposta da API (excluir): $data');
+      
+      if (data['sucesso'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Treino "${treino['nome_treino']}" excluído com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Recarregar a lista de treinos
+        _carregarTreinosUsuario();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao excluir treino: ${data['erro'] ?? 'Erro desconhecido'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro de conexão: $e'),
+          backgroundColor: Colors.red,
         ),
-      ),
-    );
+      );
+    }
   }
 } 
 
@@ -1502,11 +2437,11 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
         // Verificar se o exercício tem peso
         if (peso > 0) {
           temExerciciosComPeso = true;
-          final series = int.tryParse(exercicio['numero_series']?.toString() ?? '1') ?? 1;
-          final repeticoes = int.tryParse(exercicio['numero_repeticoes']?.toString() ?? '1') ?? 1;
-          
-          // Peso total = peso × séries × repetições
-          pesoTotal += peso * series * repeticoes;
+        final series = int.tryParse(exercicio['numero_series']?.toString() ?? '1') ?? 1;
+        final repeticoes = int.tryParse(exercicio['numero_repeticoes']?.toString() ?? '1') ?? 1;
+        
+        // Peso total = peso × séries × repetições
+        pesoTotal += peso * series * repeticoes;
         }
       }
     }
@@ -1871,7 +2806,7 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 // Título especial para premios de resistência
                 Text(
                   premio['peso'] == 0.0 
-                    ? 'Parabéns! Você ganhou um prêmio de resistência e disciplina!'
+                    ? 'Parabéns! Você ganhou um prêmio de resistência e força!'
                     : 'Parabéns!',
                   style: TextStyle(
                     fontSize: premio['peso'] == 0.0 ? 18 : 24,
@@ -1916,63 +2851,63 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
                 
                 // Peso total carregado (só mostrar se houver peso)
                 if (pesoTotal > 0)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.fitness_center,
-                              color: const Color(0xFF3B82F6),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Peso total:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF374151),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Ícone para explicar o cálculo
-                            GestureDetector(
-                              onTap: () => _mostrarExplicacaoCalculo(),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.help_outline,
-                                  color: const Color(0xFF3B82F6),
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${pesoTotal.toStringAsFixed(0)} kg',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF3B82F6),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.fitness_center,
+                            color: const Color(0xFF3B82F6),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Peso total:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Ícone para explicar o cálculo
+                          GestureDetector(
+                            onTap: () => _mostrarExplicacaoCalculo(),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.help_outline,
+                                color: const Color(0xFF3B82F6),
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${pesoTotal.toStringAsFixed(0)} kg',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF3B82F6),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 24),
                 
                 // Botão para coletar prêmio

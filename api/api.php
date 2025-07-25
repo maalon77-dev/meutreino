@@ -292,7 +292,8 @@ switch ($acao) {
                 FROM treinos t 
                 LEFT JOIN exercicios e ON t.id = e.id_treino 
                 WHERE t.usuario_id = ? 
-                GROUP BY t.id";
+                GROUP BY t.id 
+                ORDER BY t.ordem ASC, t.id ASC";
         $stmt = $conn->prepare($sql);
         if (!$stmt) {
             echo json_encode(['erro' => 'Erro no prepare: ' . $conn->error]);
@@ -391,6 +392,112 @@ switch ($acao) {
         ];
         
         echo json_encode($resultado);
+        break;
+
+    case 'duplicar_treino':
+        $usuario_id = intval($_REQUEST['usuario_id'] ?? 0);
+        $treino_original_id = intval($_REQUEST['treino_original_id'] ?? 0);
+        $nome_treino = $_REQUEST['nome_treino'] ?? '';
+        
+        if ($usuario_id === 0 || $treino_original_id === 0 || empty($nome_treino)) {
+            echo json_encode(['erro' => 'usuario_id, treino_original_id e nome_treino são obrigatórios']);
+            break;
+        }
+        
+        // Iniciar transação
+        $conn->autocommit(FALSE);
+        
+        try {
+            // 1. Verificar se o treino original existe e é público
+            $sql_verificar = "SELECT id, nome_treino FROM treinos WHERE id = ? AND publico = '1'";
+            $stmt_verificar = $conn->prepare($sql_verificar);
+            $stmt_verificar->bind_param("i", $treino_original_id);
+            $stmt_verificar->execute();
+            $result_verificar = $stmt_verificar->get_result();
+            
+            if ($result_verificar->num_rows == 0) {
+                throw new Exception("Treino não encontrado ou não é público");
+            }
+            
+            $treino_original = $result_verificar->fetch_assoc();
+            $stmt_verificar->close();
+            
+            // 2. Buscar a próxima ordem para o usuário
+            $sql_ordem = "SELECT COALESCE(MAX(ordem), 0) + 1 as proxima_ordem FROM treinos WHERE usuario_id = ?";
+            $stmt_ordem = $conn->prepare($sql_ordem);
+            $stmt_ordem->bind_param("i", $usuario_id);
+            $stmt_ordem->execute();
+            $result_ordem = $stmt_ordem->get_result();
+            $ordem = $result_ordem->fetch_assoc()['proxima_ordem'];
+            $stmt_ordem->close();
+            
+            // 3. Criar novo treino para o usuário
+            $sql_criar_treino = "INSERT INTO treinos (usuario_id, nome_treino, publico, ordem) VALUES (?, ?, '0', ?)";
+            $stmt_criar_treino = $conn->prepare($sql_criar_treino);
+            $stmt_criar_treino->bind_param("isi", $usuario_id, $nome_treino, $ordem);
+            
+            if (!$stmt_criar_treino->execute()) {
+                throw new Exception("Erro ao criar treino: " . $stmt_criar_treino->error);
+            }
+            
+            $novo_treino_id = $conn->insert_id;
+            $stmt_criar_treino->close();
+            
+            // 4. Buscar exercícios do treino original
+            $sql_buscar_exercicios = "SELECT * FROM exercicios WHERE id_treino = ? ORDER BY ordem ASC, id ASC";
+            $stmt_buscar_exercicios = $conn->prepare($sql_buscar_exercicios);
+            $stmt_buscar_exercicios->bind_param("i", $treino_original_id);
+            $stmt_buscar_exercicios->execute();
+            $result_exercicios = $stmt_buscar_exercicios->get_result();
+            
+            $exercicios_duplicados = 0;
+            
+            // 5. Duplicar exercícios
+            while ($exercicio = $result_exercicios->fetch_assoc()) {
+                $sql_duplicar_exercicio = "INSERT INTO exercicios (
+                    id_treino, nome_do_exercicio, numero_repeticoes, peso, user_id
+                ) VALUES (?, ?, ?, ?, ?)";
+                
+                $stmt_duplicar_exercicio = $conn->prepare($sql_duplicar_exercicio);
+                $stmt_duplicar_exercicio->bind_param(
+                    "isisi",
+                    $novo_treino_id,
+                    $exercicio['nome_do_exercicio'],
+                    $exercicio['numero_repeticoes'],
+                    $exercicio['peso'],
+                    $usuario_id
+                );
+                
+                if (!$stmt_duplicar_exercicio->execute()) {
+                    throw new Exception("Erro ao duplicar exercício: " . $stmt_duplicar_exercicio->error);
+                }
+                
+                $exercicios_duplicados++;
+                $stmt_duplicar_exercicio->close();
+            }
+            
+            $stmt_buscar_exercicios->close();
+            
+            // Commit da transação
+            $conn->commit();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => "Treino duplicado com sucesso! $exercicios_duplicados exercícios copiados.",
+                'novo_treino_id' => $novo_treino_id,
+                'exercicios_duplicados' => $exercicios_duplicados
+            ]);
+            
+        } catch (Exception $e) {
+            // Rollback em caso de erro
+            $conn->rollback();
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        } finally {
+            $conn->autocommit(TRUE);
+        }
         break;
 
     default:

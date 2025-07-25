@@ -3,6 +3,35 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Estrutura para agrupar evoluções por tipo
+class EvolucaoItem {
+  final String tipo;
+  final String valorAnterior;
+  final String valorNovo;
+  final IconData icon;
+  final Color color;
+  final DateTime data;
+
+  EvolucaoItem({
+    required this.tipo,
+    required this.valorAnterior,
+    required this.valorNovo,
+    required this.icon,
+    required this.color,
+    required this.data,
+  });
+}
+
+class GrupoEvolucao {
+  final String tipo;
+  final List<EvolucaoItem> evolucoes;
+
+  GrupoEvolucao({
+    required this.tipo,
+    required this.evolucoes,
+  });
+}
+
 class HistoricoEvolucaoPage extends StatefulWidget {
   final int exercicioId;
   final String nomeExercicio;
@@ -191,12 +220,12 @@ class _HistoricoEvolucaoPageState extends State<HistoricoEvolucaoPage> {
   }
 
   Widget _buildHistoricoList() {
+    final grupos = _getGruposEvolucao();
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: historico.length,
+      itemCount: grupos.length,
       itemBuilder: (context, index) {
-        final evolucao = historico[index];
-        return _buildEvolucaoCard(evolucao, index);
+        return _buildGrupoEvolucaoCard(grupos[index]);
       },
     );
   }
@@ -489,5 +518,237 @@ class _HistoricoEvolucaoPageState extends State<HistoricoEvolucaoPage> {
       // Para outros exercícios, usar o valor da duração
       return '${duracao.toStringAsFixed(0)} min';
     }
+  }
+
+  bool _deveSalvarRepeticoes(String categoria) {
+    final categoriaLower = categoria.toLowerCase();
+    return categoriaLower.contains('musculação') || 
+           categoriaLower.contains('calistenia') || 
+           categoriaLower.contains('funcional') ||
+           categoriaLower.contains('hiit');
+  }
+
+  bool _deveSalvarSeries(String categoria) {
+    final categoriaLower = categoria.toLowerCase();
+    return categoriaLower.contains('musculação') || 
+           categoriaLower.contains('calistenia') || 
+           categoriaLower.contains('funcional') ||
+           categoriaLower.contains('hiit') ||
+           categoriaLower.contains('isometria');
+  }
+
+  List<GrupoEvolucao> _getGruposEvolucao() {
+    final Map<String, List<EvolucaoItem>> grupos = {};
+
+    for (final evolucao in historico) {
+      final dataEvolucao = DateTime.parse(evolucao['data_evolucao']);
+      final pesoAnterior = double.tryParse(evolucao['peso_anterior'].toString()) ?? 0.0;
+      final pesoNovo = double.tryParse(evolucao['peso_novo'].toString()) ?? 0.0;
+      final repeticoesAnteriores = int.tryParse(evolucao['repeticoes_anteriores'].toString()) ?? 0;
+      final repeticoesNovas = int.tryParse(evolucao['repeticoes_novas'].toString()) ?? 0;
+      final seriesAnteriores = int.tryParse(evolucao['series_anteriores'].toString()) ?? 0;
+      final seriesNovas = int.tryParse(evolucao['series_novas'].toString()) ?? 0;
+      final duracaoAnterior = double.tryParse(evolucao['duracao_anterior']?.toString() ?? '0') ?? 0.0;
+      final duracaoNova = double.tryParse(evolucao['duracao_nova']?.toString() ?? '0') ?? 0.0;
+      final distanciaAnterior = double.tryParse(evolucao['distancia_anterior']?.toString() ?? '0') ?? 0.0;
+      final distanciaNova = double.tryParse(evolucao['distancia_nova']?.toString() ?? '0') ?? 0.0;
+      final categoria = evolucao['categoria']?.toString() ?? '';
+
+      // Verificar mudanças
+      if (pesoNovo != pesoAnterior) {
+        grupos.putIfAbsent('Peso', () => []);
+        grupos['Peso']!.add(EvolucaoItem(
+          tipo: 'Peso',
+          valorAnterior: '${pesoAnterior.toStringAsFixed(1)} kg',
+          valorNovo: '${pesoNovo.toStringAsFixed(1)} kg',
+          icon: Icons.fitness_center,
+          color: Colors.blue,
+          data: dataEvolucao,
+        ));
+      }
+
+      if (repeticoesNovas != repeticoesAnteriores && _deveSalvarRepeticoes(categoria)) {
+        grupos.putIfAbsent('Repetições', () => []);
+        grupos['Repetições']!.add(EvolucaoItem(
+          tipo: 'Repetições',
+          valorAnterior: '$repeticoesAnteriores reps',
+          valorNovo: '$repeticoesNovas reps',
+          icon: Icons.repeat,
+          color: Colors.green,
+          data: dataEvolucao,
+        ));
+      }
+
+      if (seriesNovas != seriesAnteriores && _deveSalvarSeries(categoria)) {
+        grupos.putIfAbsent('Séries', () => []);
+        grupos['Séries']!.add(EvolucaoItem(
+          tipo: 'Séries',
+          valorAnterior: '$seriesAnteriores séries',
+          valorNovo: '$seriesNovas séries',
+          icon: Icons.layers,
+          color: Colors.purple,
+          data: dataEvolucao,
+        ));
+      }
+
+      if (duracaoNova != duracaoAnterior || (repeticoesNovas != repeticoesAnteriores && categoria.toLowerCase() == 'isometria')) {
+        grupos.putIfAbsent('Duração', () => []);
+        final valorAnterior = categoria.toLowerCase() == 'isometria' 
+            ? '${repeticoesAnteriores}s' 
+            : '${duracaoAnterior.toStringAsFixed(0)} min';
+        final valorNovo = categoria.toLowerCase() == 'isometria' 
+            ? '${repeticoesNovas}s' 
+            : '${duracaoNova.toStringAsFixed(0)} min';
+        grupos['Duração']!.add(EvolucaoItem(
+          tipo: 'Duração',
+          valorAnterior: valorAnterior,
+          valorNovo: valorNovo,
+          icon: Icons.timer,
+          color: Colors.orange,
+          data: dataEvolucao,
+        ));
+      }
+
+      if (distanciaNova != distanciaAnterior) {
+        grupos.putIfAbsent('Distância', () => []);
+        grupos['Distância']!.add(EvolucaoItem(
+          tipo: 'Distância',
+          valorAnterior: '${distanciaAnterior.toStringAsFixed(1)} km',
+          valorNovo: '${distanciaNova.toStringAsFixed(1)} km',
+          icon: Icons.place,
+          color: Colors.red,
+          data: dataEvolucao,
+        ));
+      }
+    }
+
+    // Ordenar evoluções por data (mais recente primeiro) e converter para lista
+    final List<GrupoEvolucao> resultado = [];
+    grupos.forEach((tipo, evolucoes) {
+      evolucoes.sort((a, b) => b.data.compareTo(a.data));
+      resultado.add(GrupoEvolucao(tipo: tipo, evolucoes: evolucoes));
+    });
+
+    // Ordenar grupos por ordem de importância
+    resultado.sort((a, b) {
+      final ordem = {'Peso': 1, 'Repetições': 2, 'Séries': 3, 'Duração': 4, 'Distância': 5};
+      return (ordem[a.tipo] ?? 6).compareTo(ordem[b.tipo] ?? 6);
+    });
+
+    return resultado;
+  }
+
+  Widget _buildGrupoEvolucaoCard(GrupoEvolucao grupo) {
+    final primeiraEvolucao = grupo.evolucoes.first;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header do grupo
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primeiraEvolucao.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    primeiraEvolucao.icon,
+                    size: 20,
+                    color: primeiraEvolucao.color,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  grupo.tipo,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: primeiraEvolucao.color,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primeiraEvolucao.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${grupo.evolucoes.length} evolução${grupo.evolucoes.length > 1 ? 'ões' : ''}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: primeiraEvolucao.color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Lista de evoluções do grupo
+            ...grupo.evolucoes.map((evolucao) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          evolucao.valorAnterior,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          evolucao.valorNovo,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: primeiraEvolucao.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    _formatarData(evolucao.data.toIso8601String()),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ],
+        ),
+      ),
+    );
   }
 } 

@@ -2078,8 +2078,8 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
       if (data['sucesso'] == true) {
         // Verificar se houve mudança (qualquer alteração) e salvar no histórico
         final houveMudanca = pesoNovo != pesoAnterior || 
-                             repeticoesNovas != repeticoesAnteriores || 
-                             seriesNovas != seriesAnteriores ||
+                             (_deveSalvarRepeticoes(categoriaNome) && repeticoesNovas != repeticoesAnteriores) || 
+                             (_deveSalvarSeries(categoriaNome) && seriesNovas != seriesAnteriores) ||
                              duracaoNova != duracaoAnterior ||
                              distanciaNova != distanciaAnterior;
         
@@ -2087,10 +2087,10 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
           await _salvarEvolucao(
             pesoAnterior: pesoAnterior,
             pesoNovo: pesoNovo,
-            repeticoesAnteriores: isIsometria ? 0 : repeticoesAnteriores,
-            repeticoesNovas: isIsometria ? 0 : repeticoesNovas,
-            seriesAnteriores: seriesAnteriores,
-            seriesNovas: seriesNovas,
+            repeticoesAnteriores: _deveSalvarRepeticoes(categoriaNome) ? repeticoesAnteriores : 0,
+            repeticoesNovas: _deveSalvarRepeticoes(categoriaNome) ? repeticoesNovas : 0,
+            seriesAnteriores: _deveSalvarSeries(categoriaNome) ? seriesAnteriores : 0,
+            seriesNovas: _deveSalvarSeries(categoriaNome) ? seriesNovas : 0,
             duracaoAnterior: duracaoAnterior,
             duracaoNova: duracaoNova,
             distanciaAnterior: distanciaAnterior,
@@ -2142,6 +2142,23 @@ class _EditarExercicioDialogState extends State<_EditarExercicioDialog> {
     }
     
     setState(() => loading = false);
+  }
+
+  bool _deveSalvarRepeticoes(String categoria) {
+    final categoriaLower = categoria.toLowerCase();
+    return categoriaLower.contains('musculação') || 
+           categoriaLower.contains('calistenia') || 
+           categoriaLower.contains('funcional') ||
+           categoriaLower.contains('hiit');
+  }
+
+  bool _deveSalvarSeries(String categoria) {
+    final categoriaLower = categoria.toLowerCase();
+    return categoriaLower.contains('musculação') || 
+           categoriaLower.contains('calistenia') || 
+           categoriaLower.contains('funcional') ||
+           categoriaLower.contains('hiit') ||
+           categoriaLower.contains('isometria');
   }
 
   Future<void> _salvarEvolucao({
