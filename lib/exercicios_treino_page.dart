@@ -942,14 +942,23 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     // Texto de instrução pequeno acima da lista
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        'Arraste para ordenar',
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.drag_handle,
+                            size: 16,
+                            color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Arraste para ordenar',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Container(
