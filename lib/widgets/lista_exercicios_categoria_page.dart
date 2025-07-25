@@ -92,6 +92,8 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
   // NOVO: Função de busca global via API
   Future<void> _buscarExerciciosGlobal(String query) async {
     print('🔍 _buscarExerciciosGlobal chamada com query: "$query"');
+    print('🔍 Categoria atual: "${widget.categoria}"');
+    print('🔍 Grupo atual: "${widget.grupo}"');
     
     if (query.isEmpty) {
       print('🔍 Query vazia, restaurando lista original');
@@ -117,14 +119,15 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
           url += '&grupo=${Uri.encodeQueryComponent(widget.grupo!)}';
         }
       } else {
-        // Se há termo de busca, fazer busca global
+        // TEMPORÁRIO: Buscar apenas por termo, sem filtro de categoria para debug
         url = 'https://airfit.online/api/buscar_exercicios_global.php?termo=${Uri.encodeQueryComponent(query)}';
-        if (widget.categoria.isNotEmpty) {
-          url += '&categoria=${Uri.encodeQueryComponent(widget.categoria)}';
-        }
-        if (widget.grupo != null && widget.grupo!.isNotEmpty) {
-          url += '&grupo=${Uri.encodeQueryComponent(widget.grupo!)}';
-        }
+        // Comentado temporariamente para debug:
+        // if (widget.categoria.isNotEmpty) {
+        //   url += '&categoria=${Uri.encodeQueryComponent(widget.categoria)}';
+        // }
+        // if (widget.grupo != null && widget.grupo!.isNotEmpty) {
+        //   url += '&grupo=${Uri.encodeQueryComponent(widget.grupo!)}';
+        // }
       }
       
       print('🔍 Buscando exercícios globalmente em: $url');
@@ -174,6 +177,12 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
         
         // A API já retorna os exercícios filtrados, então usamos diretamente
         print('🎯 Exercícios encontrados para "$query": ${todosExercicios.length}');
+        
+        // Debug: mostrar todos os exercícios encontrados
+        for (int i = 0; i < todosExercicios.length; i++) {
+          final exercicio = todosExercicios[i];
+          print('🎯 Exercício $i: ${exercicio['nome_do_exercicio']} (Categoria: ${exercicio['categoria']}, Grupo: ${exercicio['grupo']})');
+        }
 
         setState(() {
           exerciciosFiltrados = todosExercicios;
