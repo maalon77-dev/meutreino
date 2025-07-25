@@ -580,15 +580,46 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
   }
 
   void _reordenarExercicios(int oldIndex, int newIndex) {
-    setState(() {
-      if (newIndex > oldIndex) {
-        newIndex -= 1;
-      }
-      final item = exerciciosApi.removeAt(oldIndex);
-      exerciciosApi.insert(newIndex, item);
-    });
+    print('=== DEBUG REORDENAR EXERCÍCIOS ===');
+    print('Old Index: $oldIndex');
+    print('New Index: $newIndex');
+    print('Total de exercícios: ${exerciciosApi.length}');
     
-    _salvarOrdem();
+    try {
+      setState(() {
+        if (newIndex > oldIndex) {
+          newIndex -= 1;
+        }
+        print('New Index ajustado: $newIndex');
+        
+        if (oldIndex >= 0 && oldIndex < exerciciosApi.length) {
+          final item = exerciciosApi.removeAt(oldIndex);
+          print('Item removido: ${item['nome_do_exercicio']}');
+          
+          if (newIndex >= 0 && newIndex <= exerciciosApi.length) {
+            exerciciosApi.insert(newIndex, item);
+            print('Item inserido na posição: $newIndex');
+          } else {
+            print('ERRO: New Index inválido após ajuste: $newIndex');
+            exerciciosApi.add(item); // Adiciona no final se o índice for inválido
+          }
+        } else {
+          print('ERRO: Old Index inválido: $oldIndex');
+        }
+      });
+      
+      print('Nova ordem dos exercícios:');
+      for (int i = 0; i < exerciciosApi.length; i++) {
+        print('$i: ${exerciciosApi[i]['nome_do_exercicio']}');
+      }
+      
+      _salvarOrdem();
+    } catch (e) {
+      print('ERRO na reordenação: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao reordenar: $e')),
+      );
+    }
   }
 
   Future<void> _editarExercicio(BuildContext context, Map<String, dynamic> exercicio, int index) async {
@@ -1011,7 +1042,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                       final foto = exercicio['foto_gif'] ?? '';
                       final editado = _isExercicioEditado(exercicio);
                       return Container(
-                        key: ValueKey(exercicio['id']),
+                        key: ValueKey('${exercicio['id']}_${index}'),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           color: !editado 
