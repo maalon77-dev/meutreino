@@ -707,60 +707,57 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                widget.treino['nome_treino'] ?? 'Treino',
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : const Color(0xFF111827),
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
+                              Expanded(
+                                child: Text(
+                                  widget.treino['nome_treino'] ?? 'Treino',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : const Color(0xFF111827),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF3B82F6),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'Ativo',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Ativo',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              if (carregandoHistorico)
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isDark ? Colors.white70 : const Color(0xFF6B7280),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  if (carregandoHistorico)
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                          isDark ? Colors.white70 : const Color(0xFF6B7280),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    GestureDetector(
-                                      onTap: () {
-                                        _mostrarHistoricoTreino();
-                                      },
-                                      child: Icon(
-                                        Icons.info_outline,
-                                        size: 16,
-                                        color: isDark ? Colors.white70 : const Color(0xFF6B7280),
-                                      ),
-                                    ),
-                                ],
-                              ),
+                                )
+                              else
+                                GestureDetector(
+                                  onTap: () {
+                                    _mostrarHistoricoTreino();
+                                  },
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
