@@ -404,6 +404,30 @@ class _HomeContent extends StatefulWidget {
   @override
   State<_HomeContent> createState() => _HomeContentState();
 
+  static String _truncarTitulo(String titulo) {
+    // Substituir caracteres especiais problemáticos
+    String tituloLimpo = titulo
+        .replaceAll('ã', 'a')
+        .replaceAll('õ', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('â', 'a')
+        .replaceAll('ê', 'e')
+        .replaceAll('î', 'i')
+        .replaceAll('ô', 'o')
+        .replaceAll('û', 'u');
+    
+    // Limitar a 20 caracteres
+    if (tituloLimpo.length > 20) {
+      return '${tituloLimpo.substring(0, 20)}...';
+    }
+    return tituloLimpo;
+  }
+
   static Widget _buildTreinoItem(BuildContext context, String data, String titulo, String tempo) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -442,10 +466,10 @@ class _HomeContent extends StatefulWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  titulo.length > 25 ? '${titulo.substring(0, 25)}...' : titulo,
+                  _truncarTitulo(titulo),
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 12,
                     color: isDark ? Colors.white : const Color(0xFF374151),
                   ),
                   maxLines: 1,
