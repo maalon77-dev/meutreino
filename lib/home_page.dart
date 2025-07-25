@@ -445,24 +445,26 @@ class _HomeContent extends StatefulWidget {
                   titulo,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: isDark ? Colors.white : const Color(0xFF374151),
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(
                       Icons.access_time,
-                      size: 14,
+                      size: 12,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
                     ),
                     const SizedBox(width: 4),
                     Text(
                       tempo,
-                  style: TextStyle(
+                      style: TextStyle(
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1097,7 +1099,7 @@ class _HomeContentState extends State<_HomeContent> {
               // Card do último treino
               Expanded(
                 child: Container(
-                  height: 160, // Altura aumentada para evitar overflow
+                  height: 140, // Altura fixa para ambos os cards
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -1139,7 +1141,7 @@ class _HomeContentState extends State<_HomeContent> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       if (historico.isNotEmpty)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1196,7 +1198,7 @@ class _HomeContentState extends State<_HomeContent> {
                     );
                   },
                   child: Container(
-                    height: 160, // Altura aumentada para evitar overflow
+                    height: 140, // Altura fixa para ambos os cards
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -1238,7 +1240,7 @@ class _HomeContentState extends State<_HomeContent> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         Text(
                           'Veja suas conquistas',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
