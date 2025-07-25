@@ -431,8 +431,8 @@ class _HomeContent extends StatefulWidget {
   static Widget _buildTreinoItem(BuildContext context, String data, String titulo, String tempo) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF334155) : Colors.white, // Azul escuro
         borderRadius: BorderRadius.circular(12),
@@ -445,10 +445,10 @@ class _HomeContent extends StatefulWidget {
         children: [
           // Data
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               color: (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withValues(alpha: 0.1), // Azul médio
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               data,
@@ -459,7 +459,7 @@ class _HomeContent extends StatefulWidget {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           // Título e tempo
           Expanded(
             child: Column(
@@ -475,7 +475,7 @@ class _HomeContent extends StatefulWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Icon(
@@ -483,7 +483,7 @@ class _HomeContent extends StatefulWidget {
                       size: 12,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     Text(
                       tempo,
                       style: TextStyle(
