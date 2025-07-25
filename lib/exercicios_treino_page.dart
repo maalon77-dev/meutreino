@@ -544,12 +544,16 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
       print('Salvando ordem dos exercícios...');
       print('Exercícios a serem enviados: ${exerciciosApi.length}');
       
+      final requestBody = {
+        'exercicios': exerciciosApi,
+      };
+      
+      print('Request body: ${jsonEncode(requestBody)}');
+      
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'exercicios': exerciciosApi,
-        }),
+        body: jsonEncode(requestBody),
       );
       
       print('Status da resposta: ${response.statusCode}');
@@ -557,18 +561,32 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
       
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        if (responseData['sucesso'] == true) {
+        print('Response data: $responseData');
+        
+        if (responseData['success'] == true) {
+          print('Ordem salva com sucesso!');
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ordem salva com sucesso!')),
+            SnackBar(
+              content: Text('Ordem salva com sucesso!'),
+              backgroundColor: Colors.green,
+            ),
           );
         } else {
+          print('Erro na resposta: ${responseData['message']}');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro: ${responseData['erro'] ?? 'Erro desconhecido'}')),
+            SnackBar(
+              content: Text('Erro: ${responseData['message'] ?? 'Erro desconhecido'}'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
+        print('Erro HTTP: ${response.statusCode}');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro HTTP: ${response.statusCode}')),
+          SnackBar(
+            content: Text('Erro HTTP: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
@@ -1027,9 +1045,23 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       child: ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onReorder: _reordenarExercicios,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        onReorder: (oldIndex, newIndex) {
+                          print('=== REORDER CALLBACK ===');
+                          print('Old: $oldIndex, New: $newIndex');
+                          try {
+                            _reordenarExercicios(oldIndex, newIndex);
+                          } catch (e) {
+                            print('ERRO no callback de reordenação: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao reordenar: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
                     itemCount: lista.length,
                     itemBuilder: (context, index) {
                       final exercicio = lista[index];
