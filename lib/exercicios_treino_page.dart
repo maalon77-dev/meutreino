@@ -931,6 +931,51 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                           fontSize: 16,
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      // Botão Adicionar Exercício cinza quando não há exercícios
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final resultado = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AdicionarExercicioPage(),
+                                ),
+                              );
+                              // Aqui você pode tratar o resultado (exercício selecionado)
+                              if (resultado != null) {
+                                await _adicionarExercicioAoTreino(resultado);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'ADICIONAR EXERCÍCIO',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -939,42 +984,26 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    // Botão Adicionar Exercício pequeno no canto esquerdo
+                    // Texto de instrução pequeno acima da lista
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final resultado = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AdicionarExercicioPage(),
-                              ),
-                            );
-                            // Aqui você pode tratar o resultado (exercício selecionado)
-                            if (resultado != null) {
-                              await _adicionarExercicioAoTreino(resultado);
-                            }
-                          },
-                          icon: Icon(Icons.add, size: 16),
-                          label: Text(
-                            'Adicionar',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.drag_handle,
+                            size: 16,
+                            color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Arraste para ordenar',
                             style: TextStyle(
-                              fontSize: 12,
+                              color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
-                            foregroundColor: isDark ? Colors.white : const Color(0xFF374151),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                     Container(
@@ -1202,30 +1231,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
               
 
               
-              // Texto de instrução no final da lista
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.drag_handle,
-                        size: 16,
-                        color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Arraste para ordenar',
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : const Color(0xFF9CA3AF),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+
           ],
         ),
       ),
