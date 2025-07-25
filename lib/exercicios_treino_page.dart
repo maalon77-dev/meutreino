@@ -421,10 +421,11 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                           ),
                         ),
                         child: const Text(
-                          'Continuar',
+                          'Voltar ao Treino',
                           style: TextStyle(
                             color: Color(0xFF6B7280),
                             fontWeight: FontWeight.w600,
+                            fontSize: 13.6, // Reduzido em 15% de 16
                           ),
                         ),
                       ),
@@ -449,6 +450,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
+                            fontSize: 13.6, // Reduzido em 15% de 16
                           ),
                         ),
                       ),

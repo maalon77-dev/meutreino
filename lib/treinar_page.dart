@@ -114,6 +114,10 @@ class _TreinarPageState extends State<TreinarPage> {
 
   Future<void> _carregarTreinosUsuario() async {
     try {
+      setState(() {
+        isLoading = true;
+      });
+      
       final prefs = await SharedPreferences.getInstance();
       final usuarioId = prefs.getInt('usuario_id');
       
@@ -127,6 +131,21 @@ class _TreinarPageState extends State<TreinarPage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  // Função para recarregar treinos sem mostrar loading
+  Future<void> _recarregarTreinos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getInt('usuario_id');
+      
+      if (usuarioId != null && usuarioId > 0) {
+        await _buscarTreinosUsuario(usuarioId);
+        await _buscarNomesTreinos();
+      }
+    } catch (e) {
+      print('Erro ao recarregar treinos: $e');
     }
   }
 
@@ -371,8 +390,11 @@ class _TreinarPageState extends State<TreinarPage> {
           end: Alignment.bottomRight,
         ),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: RefreshIndicator(
+        onRefresh: _recarregarTreinos,
+        color: const Color(0xFF3B82F6),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -454,39 +476,6 @@ class _TreinarPageState extends State<TreinarPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Mensagem adicional para orientar a criar mais treinos (só quando não está carregando)
-              if (!isLoading) Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F9FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF3B82F6).withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.lightbulb_outline,
-                      color: const Color(0xFF3B82F6),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Dica: Crie diferentes tipos de treinos para variar seus exercícios!',
-                        style: TextStyle(
-                          color: const Color(0xFF1E40AF),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
             ] else if (!isLoading) ...[
               // Mensagem quando não há treinos cadastrados
               Container(
@@ -528,44 +517,14 @@ class _TreinarPageState extends State<TreinarPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Você ainda não criou nenhum treino personalizado. Crie seu primeiro treino para começar a treinar!',
+                      'Você ainda não criou nenhum treino personalizado. Use o botão "Criar Treino" abaixo para começar!',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: const Color(0xFF6B7280),
                         height: 1.5,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        // Aqui você pode adicionar navegação para criar treino
-                        // Por enquanto, vou mostrar um snackbar
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Funcionalidade de criar treino será implementada em breve!'),
-                            backgroundColor: const Color(0xFF3B82F6),
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.add, size: 20),
-                      label: Text(
-                        'Criar Meu Primeiro Treino',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                    ),
+
                   ],
                 ),
               ),
@@ -717,12 +676,33 @@ class _TreinarPageState extends State<TreinarPage> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () {
-                        Navigator.of(context).push(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => const TreinosProntosPage(),
                           ),
                         );
+                        // Recarregar treinos quando retornar da página de treinos prontos
+                        await _recarregarTreinos();
+                        
+                        // Feedback visual para o usuário
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.refresh, color: Colors.white, size: 20),
+                                  SizedBox(width: 8),
+                                  Text('Lista de treinos atualizada!'),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFF10B981),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
                       },
                       child: Text(
                         'Treinos Prontos',
@@ -737,6 +717,7 @@ class _TreinarPageState extends State<TreinarPage> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
