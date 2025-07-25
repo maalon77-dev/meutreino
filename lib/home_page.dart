@@ -442,13 +442,13 @@ class _HomeContent extends StatefulWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  titulo,
+                  titulo.length > 25 ? '${titulo.substring(0, 25)}...' : titulo,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                     color: isDark ? Colors.white : const Color(0xFF374151),
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
