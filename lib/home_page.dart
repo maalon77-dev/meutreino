@@ -1097,7 +1097,7 @@ class _HomeContentState extends State<_HomeContent> {
               // Card do último treino
               Expanded(
                 child: Container(
-                  height: 140, // Altura fixa para ambos os cards
+                  height: 160, // Altura aumentada para evitar overflow
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -1139,7 +1139,7 @@ class _HomeContentState extends State<_HomeContent> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       if (historico.isNotEmpty)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1196,7 +1196,7 @@ class _HomeContentState extends State<_HomeContent> {
                     );
                   },
                   child: Container(
-                    height: 140, // Altura fixa para ambos os cards
+                    height: 160, // Altura aumentada para evitar overflow
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -1238,7 +1238,7 @@ class _HomeContentState extends State<_HomeContent> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Text(
                           'Veja suas conquistas',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
