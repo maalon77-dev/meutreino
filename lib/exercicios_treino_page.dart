@@ -539,7 +539,7 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
 
   Future<void> _salvarOrdem() async {
     try {
-      final url = Uri.parse('https://airfit.online/api/reorder_exercicios.php');
+      final url = Uri.parse('https://airfit.online/api/reorder_exercicios_v2.php');
       
       print('Salvando ordem dos exercícios...');
       print('Exercícios a serem enviados: ${exerciciosApi.length}');
@@ -579,47 +579,47 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
     }
   }
 
-  void _moverExercicio(int fromIndex, int toIndex) {
-    print('=== DEBUG MOVER EXERCÍCIO ===');
-    print('From Index: $fromIndex');
-    print('To Index: $toIndex');
+  void _reordenarExercicios(int oldIndex, int newIndex) {
+    print('=== DEBUG REORDENAR EXERCÍCIOS ===');
+    print('Old Index: $oldIndex');
+    print('New Index: $newIndex');
     print('Total de exercícios: ${exerciciosApi.length}');
     
     try {
       setState(() {
-        if (fromIndex >= 0 && fromIndex < exerciciosApi.length &&
-            toIndex >= 0 && toIndex < exerciciosApi.length) {
+        if (newIndex > oldIndex) {
+          newIndex -= 1;
+        }
+        print('New Index ajustado: $newIndex');
+        
+        if (oldIndex >= 0 && oldIndex < exerciciosApi.length) {
+          final item = exerciciosApi.removeAt(oldIndex);
+          print('Item removido: ${item['nome_do_exercicio']}');
           
-          final item = exerciciosApi.removeAt(fromIndex);
-          print('Item movido: ${item['nome_do_exercicio']}');
-          
-          exerciciosApi.insert(toIndex, item);
-          print('Item inserido na posição: $toIndex');
-          
-          print('Nova ordem dos exercícios:');
-          for (int i = 0; i < exerciciosApi.length; i++) {
-            print('$i: ${exerciciosApi[i]['nome_do_exercicio']}');
+          if (newIndex >= 0 && newIndex <= exerciciosApi.length) {
+            exerciciosApi.insert(newIndex, item);
+            print('Item inserido na posição: $newIndex');
+          } else {
+            print('ERRO: New Index inválido após ajuste: $newIndex');
+            exerciciosApi.add(item); // Adiciona no final se o índice for inválido
           }
-          
-          _salvarOrdem();
         } else {
-          print('ERRO: Índices inválidos - fromIndex: $fromIndex, toIndex: $toIndex');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro: Posições inválidas para mover')),
-          );
+          print('ERRO: Old Index inválido: $oldIndex');
         }
       });
+      
+      print('Nova ordem dos exercícios:');
+      for (int i = 0; i < exerciciosApi.length; i++) {
+        print('$i: ${exerciciosApi[i]['nome_do_exercicio']}');
+      }
+      
+      _salvarOrdem();
     } catch (e) {
-      print('ERRO ao mover exercício: $e');
+      print('ERRO na reordenação: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao mover exercício: $e')),
+        SnackBar(content: Text('Erro ao reordenar: $e')),
       );
     }
-  }
-
-  void _reordenarExercicios(int oldIndex, int newIndex) {
-    // Mantido para compatibilidade, mas não usado mais
-    _moverExercicio(oldIndex, newIndex);
   }
 
   Future<void> _editarExercicio(BuildContext context, Map<String, dynamic> exercicio, int index) async {
@@ -1026,11 +1026,12 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: lista.length,
-                        itemBuilder: (context, index) {
+                      child: ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onReorder: _reordenarExercicios,
+                    itemCount: lista.length,
+                    itemBuilder: (context, index) {
                       final exercicio = lista[index];
                       final nome = exercicio['nome_do_exercicio'] ?? 'Exercício';
                       final categoria = exercicio['categoria'] ?? '';
@@ -1139,43 +1140,9 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // Botões de ordenação e ações
+                              // Botões editar/excluir/histórico
                               Row(
                                 children: [
-                                  // Botões de mover para cima/baixo
-                                  if (index > 0)
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(8),
-                                        onTap: () => _moverExercicio(index, index - 1),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(6),
-                                          child: Icon(
-                                            Icons.keyboard_arrow_up,
-                                            color: Colors.grey[600],
-                                            size: 22,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  if (index < lista.length - 1)
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(8),
-                                        onTap: () => _moverExercicio(index, index + 1),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(6),
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: Colors.grey[600],
-                                            size: 22,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  const SizedBox(width: 4),
                                   // Ícone de histórico de evolução
                                   Material(
                                     color: Colors.transparent,
