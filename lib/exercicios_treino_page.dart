@@ -703,23 +703,9 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                 ),
                 child: Column(
                   children: [
-                    // Header com botão voltar e título
+                    // Header com título
                     Row(
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.arrow_back,
-                              color: isDark ? Colors.white : const Color(0xFF374151),
-                            ),
-                            onPressed: widget.onVoltar,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
