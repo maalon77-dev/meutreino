@@ -1508,6 +1508,9 @@ class _ExecucaoTreinoPageState extends State<ExecucaoTreinoPage>
   int tempoTotalTreino = 0;
   int _selectedIndex = 2; // Treinar
   
+  // GlobalKey para o Scaffold
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  
   // Controladores de animação
   late AnimationController _glowController;
   late AnimationController _buttonController;
