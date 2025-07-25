@@ -404,35 +404,11 @@ class _HomeContent extends StatefulWidget {
   @override
   State<_HomeContent> createState() => _HomeContentState();
 
-  static String _truncarTitulo(String titulo) {
-    // Substituir caracteres especiais problemáticos
-    String tituloLimpo = titulo
-        .replaceAll('ã', 'a')
-        .replaceAll('õ', 'o')
-        .replaceAll('ç', 'c')
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('â', 'a')
-        .replaceAll('ê', 'e')
-        .replaceAll('î', 'i')
-        .replaceAll('ô', 'o')
-        .replaceAll('û', 'u');
-    
-    // Limitar a 20 caracteres
-    if (tituloLimpo.length > 20) {
-      return '${tituloLimpo.substring(0, 20)}...';
-    }
-    return tituloLimpo;
-  }
-
   static Widget _buildTreinoItem(BuildContext context, String data, String titulo, String tempo) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF334155) : Colors.white, // Azul escuro
         borderRadius: BorderRadius.circular(12),
@@ -445,10 +421,10 @@ class _HomeContent extends StatefulWidget {
         children: [
           // Data
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: (isDark ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6)).withValues(alpha: 0.1), // Azul médio
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               data,
@@ -459,36 +435,34 @@ class _HomeContent extends StatefulWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           // Título e tempo
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _truncarTitulo(titulo),
+                  titulo,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                    fontSize: 14,
                     color: isDark ? Colors.white : const Color(0xFF374151),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(
                       Icons.access_time,
-                      size: 12,
+                      size: 14,
                       color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
                     ),
-                    const SizedBox(width: 2),
+                    const SizedBox(width: 4),
                     Text(
                       tempo,
-                      style: TextStyle(
+                  style: TextStyle(
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF6B7280), // Azul claro
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1288,7 +1262,6 @@ class _HomeContentState extends State<_HomeContent> {
           
           // Card de histórico
           Container(
-            constraints: const BoxConstraints(minHeight: 200),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.white, // Azul escuro variante
               borderRadius: BorderRadius.circular(24),
@@ -1300,7 +1273,7 @@ class _HomeContentState extends State<_HomeContent> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1375,15 +1348,12 @@ class _HomeContentState extends State<_HomeContent> {
                     ),
                   )
                 else
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (historico.length >= 1) _HomeContent._buildTreinoItem(context, _formatarData(historico[0]['data_treino']), historico[0]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[0]['tempo_total'].toString()) ?? 0) ~/ 60)),
-                        if (historico.length >= 2) _HomeContent._buildTreinoItem(context, _formatarData(historico[1]['data_treino']), historico[1]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[1]['tempo_total'].toString()) ?? 0) ~/ 60)),
-                        if (historico.length >= 3) _HomeContent._buildTreinoItem(context, _formatarData(historico[2]['data_treino']), historico[2]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[2]['tempo_total'].toString()) ?? 0) ~/ 60)),
-                      ],
-                    ),
+                  Column(
+          children: [
+                      if (historico.length >= 1) _HomeContent._buildTreinoItem(context, _formatarData(historico[0]['data_treino']), historico[0]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[0]['tempo_total'].toString()) ?? 0) ~/ 60)),
+                      if (historico.length >= 2) _HomeContent._buildTreinoItem(context, _formatarData(historico[1]['data_treino']), historico[1]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[1]['tempo_total'].toString()) ?? 0) ~/ 60)),
+                      if (historico.length >= 3) _HomeContent._buildTreinoItem(context, _formatarData(historico[2]['data_treino']), historico[2]['nome_treino'] ?? 'Treino', _formatarTempo((int.tryParse(historico[2]['tempo_total'].toString()) ?? 0) ~/ 60)),
+                    ],
                   ),
                 const SizedBox(height: 16),
                 TextButton(
