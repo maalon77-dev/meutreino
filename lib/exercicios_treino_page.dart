@@ -950,12 +950,17 @@ class _ExerciciosTreinoPageState extends State<ExerciciosTreinoPage> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF),
-                              foregroundColor: isDark ? Colors.white : Colors.black,
-                              elevation: 0,
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              elevation: 2,
+                              shadowColor: Colors.grey.withOpacity(0.3),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: Colors.grey.withOpacity(0.2),
+                                  width: 1,
+                                ),
                               ),
                             ),
                             child: Row(
