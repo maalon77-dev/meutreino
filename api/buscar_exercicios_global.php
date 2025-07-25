@@ -19,12 +19,6 @@ error_log("Termo de busca: $termo_busca");
 error_log("Categoria: $categoria");
 error_log("Grupo: $grupo");
 
-// Validar se pelo menos um parâmetro foi fornecido
-if (empty($termo_busca) && empty($categoria) && empty($grupo)) {
-    // Se não há parâmetros, retornar todos os exercícios da tabela exercicios_admin
-    error_log("Nenhum parâmetro fornecido, retornando todos os exercícios");
-}
-
 try {
     // Conectar ao banco
     $mysqli = new mysqli('academia3322.mysql.dbaas.com.br', 'academia3322', 'vida1503A@', 'academia3322');
@@ -42,14 +36,14 @@ try {
     $params = [];
     $types = '';
     
-    // Se termo de busca foi fornecido, buscar em múltiplos campos
+    // Se termo de busca foi fornecido, buscar em múltiplos campos com LOWER() para case-insensitive
     if (!empty($termo_busca)) {
-        $termo_busca = '%' . $termo_busca . '%';
-        $where_conditions[] = "(nome_do_exercicio LIKE ? OR descricao LIKE ? OR categoria LIKE ? OR grupo LIKE ?)";
-        $params[] = $termo_busca;
-        $params[] = $termo_busca;
-        $params[] = $termo_busca;
-        $params[] = $termo_busca;
+        $termo_busca_lower = '%' . strtolower($termo_busca) . '%';
+        $where_conditions[] = "(LOWER(nome_do_exercicio) LIKE ? OR LOWER(descricao) LIKE ? OR LOWER(categoria) LIKE ? OR LOWER(grupo) LIKE ?)";
+        $params[] = $termo_busca_lower;
+        $params[] = $termo_busca_lower;
+        $params[] = $termo_busca_lower;
+        $params[] = $termo_busca_lower;
         $types .= 'ssss';
     }
     
@@ -108,8 +102,8 @@ try {
     if (empty($exercicios) && !empty($_GET['termo'])) {
         error_log("Nenhum resultado encontrado, tentando busca mais ampla...");
         
-        $termo_amplo = '%' . $_GET['termo'] . '%';
-        $query_amplo = "SELECT * FROM exercicios_admin WHERE nome_do_exercicio LIKE ? ORDER BY nome_do_exercicio";
+        $termo_amplo = '%' . strtolower($_GET['termo']) . '%';
+        $query_amplo = "SELECT * FROM exercicios_admin WHERE LOWER(nome_do_exercicio) LIKE ? ORDER BY nome_do_exercicio";
         
         $stmt_amplo = $mysqli->prepare($query_amplo);
         $stmt_amplo->bind_param('s', $termo_amplo);

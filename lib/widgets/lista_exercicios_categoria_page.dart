@@ -91,7 +91,10 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
 
   // NOVO: Função de busca global via API
   Future<void> _buscarExerciciosGlobal(String query) async {
+    print('🔍 _buscarExerciciosGlobal chamada com query: "$query"');
+    
     if (query.isEmpty) {
+      print('🔍 Query vazia, restaurando lista original');
       setState(() {
         exerciciosFiltrados = exercicios;
         isSearching = false;
@@ -132,6 +135,7 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
       );
 
       print('📡 Status da resposta: ${response.statusCode}');
+      print('📡 Corpo da resposta: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -145,6 +149,7 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
           // Debug: verificar estrutura dos dados da busca global
           if (todosExercicios.isNotEmpty) {
             print('🔍 Estrutura do primeiro exercício (busca): ${todosExercicios.first.keys.toList()}');
+            print('🔍 Nome do primeiro exercício: ${todosExercicios.first['nome_do_exercicio']}');
             print('🔍 Categoria do primeiro (busca): ${todosExercicios.first['categoria']}');
             print('🔍 Grupo do primeiro (busca): ${todosExercicios.first['grupo']}');
           }
@@ -154,6 +159,7 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
           // Debug: verificar estrutura dos dados da busca global (formato antigo)
           if (todosExercicios.isNotEmpty) {
             print('🔍 Estrutura do primeiro exercício (busca antiga): ${todosExercicios.first.keys.toList()}');
+            print('🔍 Nome do primeiro exercício: ${todosExercicios.first['nome_do_exercicio']}');
             print('🔍 Categoria do primeiro (busca antiga): ${todosExercicios.first['categoria']}');
             print('🔍 Grupo do primeiro (busca antiga): ${todosExercicios.first['grupo']}');
           }
@@ -193,14 +199,19 @@ class _ListaExerciciosCategoriaPageState extends State<ListaExerciciosCategoriaP
 
   // NOVO: Função de busca com debounce
   void _onSearchChanged(String value) {
+    print('🔍 _onSearchChanged chamada com value: "$value"');
     setState(() {
       searchQuery = value;
     });
     
     // Debounce para evitar muitas requisições
     Future.delayed(const Duration(milliseconds: 300), () {
+      print('🔍 Debounce executado - searchQuery: "$searchQuery", value: "$value"');
       if (searchQuery == value) {
+        print('🔍 Chamando _buscarExerciciosGlobal com: "$value"');
         _buscarExerciciosGlobal(value);
+      } else {
+        print('🔍 Debounce ignorado - searchQuery mudou');
       }
     });
   }

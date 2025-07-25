@@ -31,13 +31,13 @@ try {
     // Definir charset
     $mysqli->set_charset('utf8mb4');
     
-    // Preparar consulta
+    // Preparar consulta com LOWER() para case-insensitive
     if (!empty($grupo)) {
-        $stmt = $mysqli->prepare("SELECT * FROM exercicios_admin WHERE categoria = ? AND grupo = ? ORDER BY nome_do_exercicio");
+        $stmt = $mysqli->prepare("SELECT * FROM exercicios_admin WHERE LOWER(categoria) = LOWER(?) AND LOWER(grupo) = LOWER(?) ORDER BY nome_do_exercicio");
         if (!$stmt) throw new Exception('Erro ao preparar consulta: ' . $mysqli->error);
         $stmt->bind_param('ss', $categoria, $grupo);
     } else {
-        $stmt = $mysqli->prepare("SELECT * FROM exercicios_admin WHERE categoria = ? ORDER BY nome_do_exercicio");
+        $stmt = $mysqli->prepare("SELECT * FROM exercicios_admin WHERE LOWER(categoria) = LOWER(?) ORDER BY nome_do_exercicio");
         if (!$stmt) throw new Exception('Erro ao preparar consulta: ' . $mysqli->error);
         $stmt->bind_param('s', $categoria);
     }
